@@ -120,6 +120,8 @@ const previewTitle = document.getElementById("previewTitle");
 const previewContent = document.getElementById("previewContent");
 const previewDownloadBtn = document.getElementById("previewDownloadBtn");
 const previewEditBtn = document.getElementById("previewEditBtn");
+const previewOpenTabBtn = document.getElementById("previewOpenTabBtn");
+const previewPrintBtn = document.getElementById("previewPrintBtn");
 
 let promptCallback = null;
 
@@ -174,7 +176,16 @@ function isTextEditable(name, mime) {
 
 function isOfficePreviewable(name) {
   const lower = name.toLowerCase();
-  return lower.endsWith(".xlsx") || lower.endsWith(".csv") || lower.endsWith(".tsv") || lower.endsWith(".docx");
+  return (
+    lower.endsWith(".xlsx") ||
+    lower.endsWith(".xls") ||
+    lower.endsWith(".csv") ||
+    lower.endsWith(".tsv") ||
+    lower.endsWith(".ods") ||
+    lower.endsWith(".docx") ||
+    lower.endsWith(".doc") ||
+    lower.endsWith(".rtf")
+  );
 }
 
 function isArchivable(name) {
@@ -577,6 +588,12 @@ function renderTableView() {
     actionsTd.className = "col-actions";
     const group = document.createElement("div");
     group.className = "action-group";
+
+    // Vista Previa (para todos los archivos: PDF, Word, Excel, Imágenes, Video, Texto, etc.)
+    if (!item.is_dir) {
+      const prevBtn = createActionBtn("👁️", "Vista Previa del documento", () => openPreview(item));
+      group.appendChild(prevBtn);
+    }
 
     // Descargar
     const dlBtn = createActionBtn("⬇️", item.is_dir ? "Descargar ZIP" : "Descargar", () => {
@@ -1740,14 +1757,16 @@ async function openPreview(item) {
   const inlineUrl = `/api/download?path=${encodeURIComponent(item.path)}&inline=1`;
   const downloadUrl = `/api/download?path=${encodeURIComponent(item.path)}`;
 
-  previewTitle.textContent = item.name;
+  previewTitle.textContent = `${getFileIconChar(item)} ${item.name}`;
   previewDownloadBtn.href = downloadUrl;
   previewContent.innerHTML = "";
   previewModal.classList.remove("hidden");
 
   const mime = item.mime || "";
+  const lowerName = item.name.toLowerCase();
   const canWrite = state.user.role === "admin" || state.user.role === "editor";
   const editable = isTextEditable(item.name, mime);
+  const isPdf = mime === "application/pdf" || lowerName.endsWith(".pdf");
 
   previewEditBtn.classList.toggle("hidden", !(canWrite && editable));
   previewEditBtn.onclick = () => {
@@ -1755,8 +1774,66 @@ async function openPreview(item) {
     openTextEditor(item.path, item.name);
   };
 
+  if (previewOpenTabBtn) {
+    previewOpenTabBtn.classList.toggle("hidden", !(isPdf || mime.startsWith("image/")));
+    previewOpenTabBtn.href = inlineUrl;
+  }
+
+  if (previewPrintBtn) {
+    previewPrintBtn.classList.toggle("hidden", !isOfficePreviewable(item.name));
+    previewPrintBtn.onclick = () => window.print();
+  }
+
+  // --- Vista Previa de Excel (.xlsx, .xls, .csv, .tsv, .ods) y Word (.docx, .doc, .rtf) ---
   if (isOfficePreviewable(item.name)) {
-    previewContent.innerHTML = `<p style="padding:1.5rem;">Cargando documento Office...</p>`;
+    previewContent.innerHTML = `<div style="padding:2rem; text-align:center;"><i class="fas fa-spinner fa-spin" style="font-size:1.8rem; color:var(--icfd-gold);"></i><p style="margin-top:0.75rem;">Generando vista previa de <b>${item.name}</b>...</p></div>`;
+
+    const isSheet =
+      lowerName.endsWith(".xlsx") ||
+      lowerName.endsWith(".xls") ||
+      lowerName.endsWith(".csv") ||
+      lowerName.endsWith(".tsv") ||
+      lowerName.endsWith(".ods");
+
+    // 1. Intentar con SheetJS local para hojas de cálculo (.xlsx, .xls, .csv, .ods)
+    if (isSheet && window.XLSX) {
+      try {
+        const res = await fetch(inlineUrl);
+        const buf = await res.arrayBuffer();
+        const wb = window.XLSX.read(buf, { type: "array" });
+        const sheets = wb.SheetNames.map((shName) => {
+          const ws = wb.Sheets[shName];
+          const rows = window.XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+          return { name: shName, rows: rows.slice(0, 500) };
+        });
+        previewContent.innerHTML = "";
+        previewContent.appendChild(renderSpreadsheetPreview(sheets));
+        return;
+      } catch (_) {
+        // Continuar al fallback del servidor
+      }
+    }
+
+    // 2. Intentar con Mammoth.js local para documentos Word (.docx con imágenes, tablas y estilos)
+    if (lowerName.endsWith(".docx") && window.mammoth) {
+      try {
+        const res = await fetch(inlineUrl);
+        const buf = await res.arrayBuffer();
+        const result = await window.mammoth.convertToHtml({ arrayBuffer: buf });
+        if (result && result.value) {
+          previewContent.innerHTML = "";
+          const page = document.createElement("div");
+          page.className = "docx-page-preview";
+          page.innerHTML = result.value;
+          previewContent.appendChild(page);
+          return;
+        }
+      } catch (_) {
+        // Continuar al fallback del servidor
+      }
+    }
+
+    // 3. Procesador nativo en Python del servidor (/api/office-preview)
     try {
       const res = await fetch(`/api/office-preview?path=${encodeURIComponent(item.path)}`);
       const data = await res.json();
@@ -1792,9 +1869,11 @@ async function openPreview(item) {
     audio.controls = true;
     audio.autoplay = true;
     previewContent.appendChild(audio);
-  } else if (mime === "application/pdf" || item.name.toLowerCase().endsWith(".pdf")) {
+  } else if (isPdf) {
     const iframe = document.createElement("iframe");
-    iframe.src = inlineUrl;
+    iframe.src = `${inlineUrl}#toolbar=1&view=FitH`;
+    iframe.style.width = "100%";
+    iframe.style.height = "72vh";
     previewContent.appendChild(iframe);
   } else if (editable) {
     if (item.size > 512 * 1024) {

@@ -1757,10 +1757,36 @@ input:focus,
   cursor: pointer;
 }
 
-/* Visor Office (Excel / CSV / Word) */
+/* Visor Office (Excel / CSV / Word) y PDF en Modal XL */
+.modal.modal-xl {
+  max-width: 1080px;
+  width: 95vw;
+}
+
 .preview-body {
   max-height: 75vh;
   overflow: auto;
+  display: block;
+}
+
+.docx-page-preview table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.86rem;
+}
+
+.docx-page-preview table td,
+.docx-page-preview table th {
+  border: 1px solid var(--border);
+  padding: 0.45rem 0.65rem;
+}
+
+.docx-page-preview img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 0.75rem 0;
 }
 
 .office-viewer-wrap {

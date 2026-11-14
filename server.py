@@ -263,6 +263,38 @@ def parse_docx_preview(file_path: Path) -> dict:
     return {"type": "document", "blocks": blocks}
 
 
+def parse_doc_legacy_preview(file_path: Path) -> dict:
+    """Extrae texto legible de documentos .doc (Word 97-2003) o .rtf sin dependencias externas."""
+    raw = file_path.read_bytes()
+    ext = file_path.suffix.lower()
+    blocks = []
+    if ext == ".rtf":
+        text = raw.decode("latin-1", errors="ignore")
+        text = re.sub(r"\\[a-z]+-?\d*[ ]?", "", text)
+        text = text.replace("{", "").replace("}", "")
+        for line in text.splitlines():
+            clean = line.strip()
+            if clean:
+                blocks.append({"type": "p", "text": clean})
+    else:
+        # Extraer secuencias UTF-16LE y ASCII imprimibles de un binario OLE2 .doc
+        utf16_matches = re.findall(rb"(?:[\x20-\x7e\xa0-\xff]\x00){6,}", raw)
+        ascii_matches = re.findall(rb"[\x20-\x7e\xa0-\xff]{12,}", raw)
+        seen = set()
+        for m in utf16_matches:
+            s = m.decode("utf-16le", errors="ignore").strip()
+            if len(s) >= 6 and s not in seen and not s.startswith(("Root Entry", "WordDocument", "Microsoft", "Normal.dot")):
+                seen.add(s)
+                blocks.append({"type": "p", "text": s})
+        if not blocks:
+            for m in ascii_matches:
+                s = m.decode("latin-1", errors="ignore").strip()
+                if len(s) >= 12 and s not in seen and not any(k in s for k in ("MSWordDoc", "Word.Document", "SummaryInformation")):
+                    seen.add(s)
+                    blocks.append({"type": "p", "text": s})
+    return {"type": "document", "blocks": blocks[:400]}
+
+
 class DatabaseManager:
     """Gestiona usuarios, enlaces compartidos, papelera, versiones, metadatos, favoritos, permisos y auditoría en SQLite."""
 
@@ -1458,6 +1490,8 @@ class FileServerHandler(BaseHTTPRequestHandler):
                 data = parse_csv_preview(target)
             elif ext == ".docx":
                 data = parse_docx_preview(target)
+            elif ext in (".doc", ".rtf"):
+                data = parse_doc_legacy_preview(target)
             else:
                 self.send_json({"error": "Formato Office no soportado para vista previa directa."}, status=HTTPStatus.BAD_REQUEST)
                 return

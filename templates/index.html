@@ -586,13 +586,15 @@
 
   <!-- Modal Vista Previa (Multimedia, PDF, Excel, Word, Código) -->
   <div id="previewModal" class="modal-backdrop hidden">
-    <div class="modal modal-lg">
+    <div class="modal modal-xl">
       <div class="modal-header">
         <h3 id="previewTitle">Vista Previa</h3>
         <button class="btn-close" id="previewCloseBtn">&times;</button>
       </div>
-      <div class="modal-body preview-body" id="previewContent"></div>
+      <div class="modal-body preview-container preview-body" id="previewContent"></div>
       <div class="modal-footer">
+        <button type="button" class="btn btn-outline hidden" id="previewPrintBtn"><i class="fas fa-print"></i> Imprimir</button>
+        <a id="previewOpenTabBtn" class="btn btn-outline hidden" href="#" target="_blank"><i class="fas fa-up-right-from-square"></i> Abrir en Pestaña</a>
         <button type="button" class="btn btn-outline hidden" id="previewEditBtn"><i class="fas fa-pen-to-square"></i> Editar Texto</button>
         <a id="previewDownloadBtn" class="btn btn-primary" href="#" download><i class="fas fa-download"></i> Descargar</a>
       </div>
@@ -602,6 +604,9 @@
   <!-- Notificaciones Toast -->
   <div id="toastContainer" class="toast-container"></div>
 
+  <!-- Librerías Locales Offline para Vista Previa de Excel (.xlsx/.xls/.csv) y Word (.docx) -->
+  <script src="/static/vendor/xlsx.full.min.js"></script>
+  <script src="/static/vendor/mammoth.browser.min.js"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>
