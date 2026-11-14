@@ -434,6 +434,11 @@ class FileServerHandler(BaseHTTPRequestHandler):
         return name
 
     # --- Enrutamiento HTTP ---
+    def do_HEAD(self):
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.end_headers()
+
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         route = parsed.path

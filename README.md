@@ -43,3 +43,18 @@ python3 server.py
 ```bash
 python3 server.py --port 8000 --dir ./storage --ssl-cert cert.pem --ssl-key key.pem
 ```
+
+---
+
+## 🌐 Despliegue Automático en Servidor Ubuntu (Nginx + mDNS `.local` + Systemd)
+
+Incluye el script [`deploy/setup_server.sh`](deploy/setup_server.sh) para configurar automáticamente:
+- Servicio `systemd` (`python-file-server.service`) activo 24/7.
+- Proxy inverso **Nginx** en puerto `80` (sin necesidad de `:8000` ni límite de tamaño de subida).
+- Anuncio automático **Plug & Play (Avahi mDNS / LLMNR)** para acceder desde cualquier equipo de la red escribiendo **`http://fileserver.local`** o **`http://fileserver-icfd.local`**.
+- Servidor DNS interno (`dnsmasq`) para resolver **`http://fileserver.icfd.cl`**.
+
+```bash
+chmod +x deploy/setup_server.sh
+sudo ./deploy/setup_server.sh
+```
