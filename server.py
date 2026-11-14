@@ -431,6 +431,16 @@ class DatabaseManager:
             conn.execute("DELETE FROM user_favorites WHERE username = ?", (username,))
             conn.commit()
 
+    def change_own_password(self, username: str, current_password: str, new_password: str):
+        if not new_password or len(new_password) < 4:
+            raise ValueError("La nueva contraseña debe tener al menos 4 caracteres.")
+        with self.lock, self._connect() as conn:
+            row = conn.execute("SELECT password_hash FROM users WHERE username = ?", (username,)).fetchone()
+            if not row or not verify_password(current_password, row["password_hash"]):
+                raise ValueError("La contraseña actual ingresada es incorrecta.")
+            conn.execute("UPDATE users SET password_hash = ? WHERE username = ?", (hash_password(new_password), username))
+            conn.commit()
+
     # --- Historial de Versiones ---
     def add_version(self, version_id: str, rel_path: str, version_file: str, size: int, created_by: str, comment: str = ""):
         with self.lock, self._connect() as conn:
@@ -1029,6 +1039,11 @@ class FileServerHandler(BaseHTTPRequestHandler):
                 self.handle_get_permissions(rel_path)
         elif route == "/api/stats":
             self.handle_stats(user)
+        elif route == "/api/duplicates":
+            self.handle_duplicates(user)
+        elif route == "/api/backup":
+            if self.require_role(user, ("admin",)):
+                self.handle_system_backup(user)
         elif route == "/api/trash":
             self.config.db.purge_expired_trash(self.config.trash_dir, self.config.trash_retention_days)
             self.send_json({
@@ -1097,6 +1112,12 @@ class FileServerHandler(BaseHTTPRequestHandler):
         elif route == "/api/permissions/save":
             if self.require_role(user, ("admin",)):
                 self.handle_save_permissions(user)
+        elif route == "/api/copy":
+            if self.require_role(user, ("admin", "editor")):
+                self.handle_copy(user)
+        elif route == "/api/bulk/copy":
+            if self.require_role(user, ("admin", "editor")):
+                self.handle_bulk_copy(user)
         elif route == "/api/bulk/delete":
             if self.require_role(user, ("admin",)):
                 self.handle_bulk_delete(user)
@@ -1126,6 +1147,8 @@ class FileServerHandler(BaseHTTPRequestHandler):
         elif route == "/api/users/delete":
             if self.require_role(user, ("admin",)):
                 self.handle_user_delete(user)
+        elif route == "/api/profile/password":
+            self.handle_profile_password(user)
         else:
             self.send_json({"error": "Ruta no encontrada"}, status=HTTPStatus.NOT_FOUND)
 
@@ -1799,6 +1822,222 @@ class FileServerHandler(BaseHTTPRequestHandler):
         except Exception as e:
             self.send_json({"error": f"Error al calcular estadísticas: {e}"}, status=HTTPStatus.INTERNAL_SERVER_ERROR)
 
+    def handle_duplicates(self, user: dict):
+        try:
+            perms_map = self.config.db.get_folder_permissions_map()
+            by_size = {}
+            for root, dirs, files in os.walk(self.config.storage_dir):
+                dirs[:] = [d for d in dirs if not d.startswith(".") and d not in (".trash", ".versions")]
+                for d in list(dirs):
+                    d_rel = (Path(root) / d).relative_to(self.config.storage_dir).as_posix()
+                    if not self.can_access_path(user, d_rel, perms_map):
+                        dirs.remove(d)
+                for f in files:
+                    if f == ".gitkeep" or f.startswith("."):
+                        continue
+                    fp = Path(root) / f
+                    try:
+                        st = fp.stat()
+                    except OSError:
+                        continue
+                    if st.st_size == 0:
+                        continue
+                    f_rel = fp.relative_to(self.config.storage_dir).as_posix()
+                    by_size.setdefault(st.st_size, []).append({
+                        "name": f,
+                        "path": f_rel,
+                        "size": st.st_size,
+                        "mtime": int(st.st_mtime),
+                        "full_path": fp,
+                    })
+
+            duplicate_groups = []
+            total_wasted_bytes = 0
+            total_duplicate_files = 0
+
+            for sz, items in by_size.items():
+                if len(items) < 2:
+                    continue
+                by_hash = {}
+                for item in items:
+                    try:
+                        h = hashlib.sha256()
+                        with open(item["full_path"], "rb") as f_in:
+                            while True:
+                                chunk = f_in.read(128 * 1024)
+                                if not chunk:
+                                    break
+                                h.update(chunk)
+                        digest = h.hexdigest()
+                        by_hash.setdefault(digest, []).append({
+                            "name": item["name"],
+                            "path": item["path"],
+                            "size": item["size"],
+                            "mtime": item["mtime"],
+                        })
+                    except OSError:
+                        continue
+
+                for digest, group in by_hash.items():
+                    if len(group) > 1:
+                        group.sort(key=lambda x: x["mtime"])
+                        wasted = sz * (len(group) - 1)
+                        total_wasted_bytes += wasted
+                        total_duplicate_files += len(group) - 1
+                        duplicate_groups.append({
+                            "hash": digest[:12],
+                            "size": sz,
+                            "count": len(group),
+                            "wasted_bytes": wasted,
+                            "files": group,
+                        })
+
+            duplicate_groups.sort(key=lambda g: g["wasted_bytes"], reverse=True)
+            self.send_json({
+                "ok": True,
+                "groups": duplicate_groups,
+                "total_groups": len(duplicate_groups),
+                "total_duplicate_files": total_duplicate_files,
+                "total_wasted_bytes": total_wasted_bytes,
+            })
+        except Exception as e:
+            self.send_json({"error": f"Error al buscar archivos duplicados: {e}"}, status=HTTPStatus.INTERNAL_SERVER_ERROR)
+
+    def handle_system_backup(self, user: dict):
+        try:
+            ts_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            zip_name = f"Respaldo_ICFD_{ts_str}.zip"
+            encoded_name = urllib.parse.quote(zip_name)
+
+            self.config.db.log_audit(user["username"], self.get_client_ip(), "SYSTEM_BACKUP", zip_name, "Respaldo institucional completo (BD + Archivos)")
+
+            with tempfile.NamedTemporaryFile(suffix=".zip", delete=True) as tmp_zip:
+                with zipfile.ZipFile(tmp_zip.name, "w", zipfile.ZIP_DEFLATED) as zf:
+                    # 1. Respaldo consistente de SQLite (fileserver.db)
+                    if self.config.db.db_path.exists():
+                        with tempfile.NamedTemporaryFile(suffix=".db", delete=True) as tmp_db:
+                            with self.config.db.lock, sqlite3.connect(str(self.config.db.db_path)) as src_conn:
+                                dst_conn = sqlite3.connect(tmp_db.name)
+                                src_conn.backup(dst_conn)
+                                dst_conn.close()
+                            zf.write(tmp_db.name, "database/fileserver.db")
+
+                    # 2. Archivos almacenados en storage/ (excluyendo papelera temporal .trash)
+                    for root, dirs, files in os.walk(self.config.storage_dir):
+                        dirs[:] = [d for d in dirs if d != ".trash"]
+                        for file in files:
+                            if file == ".gitkeep":
+                                continue
+                            full_p = Path(root) / file
+                            rel_arc = full_p.relative_to(self.config.storage_dir).as_posix()
+                            zf.write(full_p, f"storage/{rel_arc}")
+
+                tmp_zip.flush()
+                size = os.path.getsize(tmp_zip.name)
+
+                self.send_response(HTTPStatus.OK)
+                self.send_header("Content-Type", "application/zip")
+                self.send_header("Content-Length", str(size))
+                self.send_header("Content-Disposition", f"attachment; filename*=UTF-8''{encoded_name}")
+                self.end_headers()
+
+                with open(tmp_zip.name, "rb") as f:
+                    shutil.copyfileobj(f, self.wfile, length=64 * 1024)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        except Exception as e:
+            self.send_json({"error": f"Error al generar respaldo del sistema: {e}"}, status=HTTPStatus.INTERNAL_SERVER_ERROR)
+
+    # --- Copiar / Duplicar Archivos y Carpetas ---
+    def _copy_single_item(self, src: Path, dest_dir: Path) -> Path:
+        if src == dest_dir or src in dest_dir.parents:
+            raise ValueError("No puedes copiar una carpeta dentro de sí misma.")
+        target_dest = dest_dir / src.name
+        if target_dest.exists():
+            stem = src.name if src.is_dir() else src.stem
+            suffix = "" if src.is_dir() else src.suffix
+            candidate = dest_dir / f"{stem} - copia{suffix}"
+            counter = 2
+            while candidate.exists():
+                candidate = dest_dir / f"{stem} - copia ({counter}){suffix}"
+                counter += 1
+            target_dest = candidate
+
+        if src.is_dir():
+            shutil.copytree(src, target_dest)
+        else:
+            shutil.copy2(src, target_dest)
+        return target_dest
+
+    def handle_copy(self, user: dict):
+        try:
+            body = self.read_json_body()
+            rel_path = body.get("path", "")
+            dest_rel = body.get("destination")
+
+            if not self.can_access_path(user, rel_path):
+                self.send_json({"error": "No tienes acceso al elemento origen."}, status=HTTPStatus.FORBIDDEN)
+                return
+
+            src = self.resolve_storage_path(rel_path)
+            if src == self.config.storage_dir or not src.exists():
+                self.send_json({"error": "El archivo o carpeta a copiar no existe."}, status=HTTPStatus.NOT_FOUND)
+                return
+
+            if dest_rel is None:
+                dest_dir = src.parent
+                dest_check = dest_dir.relative_to(self.config.storage_dir).as_posix()
+                if dest_check == ".":
+                    dest_check = ""
+            else:
+                dest_check = dest_rel.strip().strip("/")
+                dest_dir = self.resolve_storage_path(dest_check)
+
+            if not self.can_access_path(user, dest_check):
+                self.send_json({"error": "No tienes acceso a la carpeta destino."}, status=HTTPStatus.FORBIDDEN)
+                return
+            if not dest_dir.exists() or not dest_dir.is_dir():
+                self.send_json({"error": "La carpeta de destino no existe."}, status=HTTPStatus.BAD_REQUEST)
+                return
+
+            new_path = self._copy_single_item(src, dest_dir)
+            new_rel = new_path.relative_to(self.config.storage_dir).as_posix()
+            self.config.db.log_audit(user["username"], self.get_client_ip(), "COPY", f"{rel_path} -> {new_rel}")
+            self.send_json({"ok": True, "item": self.get_file_info(new_path)})
+        except Exception as e:
+            self.send_json({"error": f"No se pudo copiar: {e}"}, status=HTTPStatus.BAD_REQUEST)
+
+    def handle_bulk_copy(self, user: dict):
+        try:
+            body = self.read_json_body()
+            paths = body.get("paths", [])
+            dest_rel = body.get("destination", "")
+            if not self.can_access_path(user, dest_rel):
+                self.send_json({"error": "No tienes acceso a la carpeta destino."}, status=HTTPStatus.FORBIDDEN)
+                return
+            dest_dir = self.resolve_storage_path(dest_rel)
+            if not dest_dir.exists() or not dest_dir.is_dir():
+                self.send_json({"error": "La carpeta de destino no existe."}, status=HTTPStatus.BAD_REQUEST)
+                return
+
+            copied = 0
+            for p in paths:
+                if not self.can_access_path(user, p):
+                    continue
+                src = self.resolve_storage_path(p)
+                if src == self.config.storage_dir or not src.exists():
+                    continue
+                try:
+                    self._copy_single_item(src, dest_dir)
+                    copied += 1
+                except ValueError:
+                    continue
+
+            self.config.db.log_audit(user["username"], self.get_client_ip(), "BULK_COPY", f"{copied} elementos -> /{dest_rel}")
+            self.send_json({"ok": True, "copied": copied})
+        except Exception as e:
+            self.send_json({"error": f"Error al copiar elementos: {e}"}, status=HTTPStatus.INTERNAL_SERVER_ERROR)
+
     # --- Operaciones Masivas (Bulk) ---
     def handle_bulk_delete(self, user: dict):
         try:
@@ -2053,6 +2292,20 @@ class FileServerHandler(BaseHTTPRequestHandler):
             username = body.get("username", "").strip()
             self.config.db.delete_user(username)
             self.config.db.log_audit(user["username"], self.get_client_ip(), "USER_DELETE", username)
+            self.send_json({"ok": True})
+        except Exception as e:
+            self.send_json({"error": str(e)}, status=HTTPStatus.BAD_REQUEST)
+
+    def handle_profile_password(self, user: dict):
+        try:
+            body = self.read_json_body()
+            current_pw = body.get("current_password", "")
+            new_pw = body.get("new_password", "")
+            if not current_pw or not new_pw:
+                self.send_json({"error": "Debes completar la contraseña actual y la nueva contraseña."}, status=HTTPStatus.BAD_REQUEST)
+                return
+            self.config.db.change_own_password(user["username"], current_pw, new_pw)
+            self.config.db.log_audit(user["username"], self.get_client_ip(), "PASSWORD_CHANGE", user["username"], "Cambio de contraseña personal")
             self.send_json({"ok": True})
         except Exception as e:
             self.send_json({"error": str(e)}, status=HTTPStatus.BAD_REQUEST)

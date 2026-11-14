@@ -26,6 +26,11 @@
   9. **Visor Integrado de Excel (`.xlsx`, `.csv`, `.tsv`) y Word (`.docx`)**: Lector nativo 100% autónomo (sin depender de internet) con pestañas de hojas, buscador de filas y vista de documento.
   10. **Ordenamiento por Columnas, Menú Contextual (Clic Derecho) y Dashboard de Estadísticas**: Ordenamiento por nombre/tamaño/fecha, menú flotante con clic derecho y pestaña `Estadísticas` con desglose por categoría y top 10 archivos más pesados.
   11. **Carpetas Privadas / Restringidas (ACL por Rol y Usuario)**: Control de acceso por carpeta con herencia a subcarpetas (`folder_permissions`).
+  12. **Detector de Archivos Duplicados (SHA-256)**: Escaneo inteligente por tamaño y huella `SHA-256` en la pestaña `Estadísticas`, con limpieza en 1 clic de copias redundantes.
+  13. **Respaldo Institucional Completo en 1 Clic (`/api/backup`)**: Exportación `.ZIP` de la base de datos `fileserver.db` (en caliente vía `sqlite3.backup`) junto con todos los archivos y versiones de `storage/`.
+  14. **Mi Perfil (Cambio de Contraseña Personal)**: Cualquier usuario puede actualizar su propia contraseña haciendo clic en su insignia de usuario en la barra superior (`#profileModal`).
+  15. **Navegación tipo Presentación en Vista Previa (`◀` `▶`)**: Botones Anterior/Siguiente, contador `X / N` y soporte de teclado (`Flecha Izquierda` / `Flecha Derecha`) sin salir del visor.
+  16. **Copiar / Duplicar Elementos y Subida de Carpetas Completas**: Botón `Subir Carpeta` (`webkitdirectory`), duplicación rápida (`- copia`) y copia masiva a otra carpeta.
 
 ## 3. Repositorio en GitHub
 - **Cuenta de GitHub:** `camilocalderonsalamanca-pixel`

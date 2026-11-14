@@ -15,6 +15,7 @@ const state = {
   sharingPath: null,
   metaItem: null,
   permItem: null,
+  previewItem: null,
 };
 
 const PRESET_TAGS = [
@@ -37,6 +38,8 @@ const breadcrumbsEl = document.getElementById("breadcrumbs");
 const searchInput = document.getElementById("searchInput");
 const uploadBtn = document.getElementById("uploadBtn");
 const fileInput = document.getElementById("fileInput");
+const uploadFolderBtn = document.getElementById("uploadFolderBtn");
+const folderInput = document.getElementById("folderInput");
 const newFolderBtn = document.getElementById("newFolderBtn");
 const newTextFileBtn = document.getElementById("newTextFileBtn");
 const downloadZipBtn = document.getElementById("downloadZipBtn");
@@ -58,6 +61,7 @@ const selectAllCheckbox = document.getElementById("selectAllCheckbox");
 const bulkBar = document.getElementById("bulkBar");
 const bulkCount = document.getElementById("bulkCount");
 const bulkZipBtn = document.getElementById("bulkZipBtn");
+const bulkCopyBtn = document.getElementById("bulkCopyBtn");
 const bulkMoveBtn = document.getElementById("bulkMoveBtn");
 const bulkDeleteBtn = document.getElementById("bulkDeleteBtn");
 const bulkClearBtn = document.getElementById("bulkClearBtn");
@@ -115,8 +119,18 @@ const userFormName = document.getElementById("userFormName");
 const userFormPass = document.getElementById("userFormPass");
 const userFormRole = document.getElementById("userFormRole");
 
+const profileModal = document.getElementById("profileModal");
+const profileForm = document.getElementById("profileForm");
+const profileUserLabel = document.getElementById("profileUserLabel");
+const profileCurrentPass = document.getElementById("profileCurrentPass");
+const profileNewPass = document.getElementById("profileNewPass");
+const profileConfirmPass = document.getElementById("profileConfirmPass");
+
 const previewModal = document.getElementById("previewModal");
 const previewTitle = document.getElementById("previewTitle");
+const previewCounter = document.getElementById("previewCounter");
+const previewPrevBtn = document.getElementById("previewPrevBtn");
+const previewNextBtn = document.getElementById("previewNextBtn");
 const previewContent = document.getElementById("previewContent");
 const previewDownloadBtn = document.getElementById("previewDownloadBtn");
 const previewEditBtn = document.getElementById("previewEditBtn");
@@ -212,7 +226,7 @@ async function initAuth() {
     }
     state.user = { username: data.username, role: data.role };
     const roleNames = { admin: "Admin", editor: "Editor", viewer: "Lector" };
-    userBadge.textContent = `👤 ${data.username} (${roleNames[data.role] || data.role})`;
+    userBadge.innerHTML = `👤 ${data.username} (${roleNames[data.role] || data.role}) <i class="fas fa-key" style="font-size:0.74rem; margin-left:4px; color:var(--icfd-gold-light);"></i>`;
 
     const canWrite = data.role === "admin" || data.role === "editor";
     const isAdmin = data.role === "admin";
@@ -639,8 +653,11 @@ function renderTableView() {
       group.appendChild(extBtn);
     }
 
-    // Renombrar
+    // Renombrar y Duplicar
     if (canWrite) {
+      const dupBtn = createActionBtn("📋", "Duplicar en esta carpeta", () => copyItem(item.path, null));
+      group.appendChild(dupBtn);
+
       const renBtn = createActionBtn("✏️", "Renombrar", () => {
         openPromptModal({
           title: "Renombrar",
@@ -790,6 +807,20 @@ function openContextMenu(e, item) {
   }
 
   if (canWrite) {
+    actions.push({
+      label: "📋 Duplicar aquí",
+      onClick: () => copyItem(item.path, null),
+    });
+    actions.push({
+      label: "📂 Copiar a otra carpeta...",
+      onClick: () =>
+        openPromptModal({
+          title: `Copiar "${item.name}"`,
+          label: "Ruta de carpeta destino (vacío para raíz /):",
+          defaultValue: state.currentPath,
+          onConfirm: (dest) => copyItem(item.path, dest === "/" ? "" : dest),
+        }),
+    });
     actions.push({
       label: "✏️ Renombrar",
       onClick: () =>
@@ -1153,6 +1184,120 @@ async function loadStats() {
 
 document.getElementById("refreshStatsBtn").addEventListener("click", loadStats);
 
+const backupSystemBtn = document.getElementById("backupSystemBtn");
+if (backupSystemBtn) {
+  backupSystemBtn.addEventListener("click", () => {
+    showToast("Preparando respaldo completo (.ZIP)...", "info");
+    window.location.href = "/api/backup";
+  });
+}
+
+const scanDuplicatesBtn = document.getElementById("scanDuplicatesBtn");
+if (scanDuplicatesBtn) {
+  scanDuplicatesBtn.addEventListener("click", scanDuplicates);
+}
+
+async function scanDuplicates() {
+  const dupBody = document.getElementById("duplicatesTableBody");
+  const dupSummary = document.getElementById("duplicatesSummaryText");
+  if (!dupBody) return;
+
+  dupBody.innerHTML = `
+    <tr>
+      <td colspan="5" style="text-align:center; padding: 1.5rem;">
+        <i class="fas fa-spinner fa-spin" style="color: var(--icfd-gold);"></i> Analizando huellas SHA-256 de los archivos...
+      </td>
+    </tr>
+  `;
+
+  const res = await fetch("/api/duplicates");
+  const data = await res.json();
+  dupBody.innerHTML = "";
+
+  if (!res.ok) {
+    dupBody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:1.2rem; color:var(--danger);">${data.error || "Error al buscar duplicados"}</td></tr>`;
+    return;
+  }
+
+  const groups = data.groups || [];
+  if (dupSummary) {
+    dupSummary.innerHTML =
+      groups.length === 0
+        ? `<span style="color: #1e7e34; font-weight: 600;">✅ No se encontraron archivos duplicados. Tu almacenamiento está optimizado.</span>`
+        : `Se detectaron <b>${data.total_groups}</b> grupos con <b>${data.total_duplicate_files}</b> copias redundantes (Espacio recuperable: <b style="color:var(--icfd-gold-dark);">${formatBytes(data.total_wasted_bytes)}</b>).`;
+  }
+
+  if (groups.length === 0) {
+    dupBody.innerHTML = `
+      <tr>
+        <td colspan="5" style="text-align:center; padding: 1.5rem; color: var(--text-muted);">
+          🎉 ¡Excelente! No existen archivos duplicados en el repositorio.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  const isAdmin = state.user.role === "admin";
+
+  groups.forEach((grp) => {
+    const tr = document.createElement("tr");
+    const locationsHtml = grp.files
+      .map(
+        (f, idx) => `
+        <div class="dup-file-item">
+          <span class="meta-badge ${idx === 0 ? "tag-success" : "badge-note"}">${idx === 0 ? "Original" : `Copia #${idx}`}</span>
+          <a href="/api/download?path=${encodeURIComponent(f.path)}" title="Descargar este archivo" style="font-weight:600; color:var(--text-main);">/${f.path}</a>
+          <small style="color:var(--text-muted);">(${formatDate(f.mtime)})</small>
+        </div>`
+      )
+      .join("");
+
+    tr.innerHTML = `
+      <td><code>#${grp.hash}</code><br><small style="color:var(--text-muted);">${grp.count} idénticos</small></td>
+      <td><div class="dup-files-list">${locationsHtml}</div></td>
+      <td class="col-size">${formatBytes(grp.size)}</td>
+      <td class="col-size"><b style="color:var(--icfd-gold-dark);">${formatBytes(grp.wasted_bytes)}</b></td>
+      <td class="col-actions">
+        ${
+          isAdmin
+            ? `<button class="btn btn-sm btn-danger clean-dup-btn" title="Conservar el archivo original más antiguo y mover las copias repetidas a la Papelera">
+                <i class="fas fa-broom"></i> Limpiar Copias (${grp.count - 1})
+               </button>`
+            : `<span style="font-size:0.8rem; color:var(--text-muted);">Solo Admin</span>`
+        }
+      </td>
+    `;
+
+    const cleanBtn = tr.querySelector(".clean-dup-btn");
+    if (cleanBtn) {
+      cleanBtn.addEventListener("click", async () => {
+        const extraPaths = grp.files.slice(1).map((f) => f.path);
+        if (
+          !confirm(
+            `Se conservará "${grp.files[0].path}" y se enviarán ${extraPaths.length} copia(s) idéntica(s) a la Papelera.\n\n¿Continuar?`
+          )
+        )
+          return;
+        const r = await fetch("/api/bulk/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paths: extraPaths }),
+        });
+        if (r.ok) {
+          showToast(`${extraPaths.length} copia(s) enviada(s) a la papelera`, "success");
+          scanDuplicates();
+          loadStats();
+        } else {
+          showToast("No se pudieron limpiar los duplicados", "error");
+        }
+      });
+    }
+
+    dupBody.appendChild(tr);
+  });
+}
+
 // --- Selección Múltiple y Operaciones Masivas ---
 selectAllCheckbox.addEventListener("change", () => {
   if (selectAllCheckbox.checked) {
@@ -1191,6 +1336,29 @@ bulkDeleteBtn.addEventListener("click", async () => {
   } else {
     showToast(data.error || "Error al eliminar", "error");
   }
+});
+
+bulkCopyBtn.addEventListener("click", () => {
+  const paths = Array.from(state.selectedPaths);
+  openPromptModal({
+    title: "Copiar elementos seleccionados",
+    label: "Ruta de carpeta destino (vacío para raíz /):",
+    defaultValue: state.currentPath,
+    onConfirm: async (dest) => {
+      const res = await fetch("/api/bulk/copy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paths, destination: dest === "/" ? "" : dest }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(`${data.copied} elemento(s) copiado(s)`, "success");
+        loadFiles();
+      } else {
+        showToast(data.error || "No se pudo copiar", "error");
+      }
+    },
+  });
 });
 
 bulkMoveBtn.addEventListener("click", () => {
@@ -1250,6 +1418,23 @@ async function createFolder(name) {
     loadFiles();
   } else {
     showToast(data.error || "No se pudo crear la carpeta", "error");
+  }
+}
+
+async function copyItem(path, destination = null) {
+  const payload = { path };
+  if (destination !== null) payload.destination = destination;
+  const res = await fetch("/api/copy", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (res.ok) {
+    showToast(`Copia creada: "${data.item?.name || "elemento"}"`, "success");
+    loadFiles();
+  } else {
+    showToast(data.error || "No se pudo copiar el elemento", "error");
   }
 }
 
@@ -1558,6 +1743,52 @@ userForm.addEventListener("submit", async (e) => {
 document.getElementById("userCloseBtn").addEventListener("click", () => userModal.classList.add("hidden"));
 document.getElementById("userCancelBtn").addEventListener("click", () => userModal.classList.add("hidden"));
 
+// --- Mi Perfil (Cambiar Contraseña Personal) ---
+function openProfileModal() {
+  if (!state.user.username) return;
+  const roleNames = { admin: "Administrador", editor: "Editor", viewer: "Lector" };
+  profileUserLabel.textContent = `Usuario activo: ${state.user.username} (${roleNames[state.user.role] || state.user.role})`;
+  profileCurrentPass.value = "";
+  profileNewPass.value = "";
+  profileConfirmPass.value = "";
+  profileModal.classList.remove("hidden");
+  setTimeout(() => profileCurrentPass.focus(), 50);
+}
+
+userBadge.addEventListener("click", openProfileModal);
+
+profileForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const current_password = profileCurrentPass.value;
+  const new_password = profileNewPass.value;
+  const confirm_password = profileConfirmPass.value;
+
+  if (new_password !== confirm_password) {
+    showToast("La nueva contraseña y su confirmación no coinciden", "error");
+    return;
+  }
+  if (new_password.length < 4) {
+    showToast("La nueva contraseña debe tener al menos 4 caracteres", "error");
+    return;
+  }
+
+  const res = await fetch("/api/profile/password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ current_password, new_password }),
+  });
+  const data = await res.json();
+  if (res.ok) {
+    showToast("Tu contraseña se ha actualizado correctamente", "success");
+    profileModal.classList.add("hidden");
+  } else {
+    showToast(data.error || "No se pudo actualizar la contraseña", "error");
+  }
+});
+
+document.getElementById("profileCloseBtn").addEventListener("click", () => profileModal.classList.add("hidden"));
+document.getElementById("profileCancelBtn").addEventListener("click", () => profileModal.classList.add("hidden"));
+
 // --- Auditoría (Admin) ---
 async function loadAudit() {
   const res = await fetch("/api/audit");
@@ -1602,6 +1833,7 @@ async function uploadFiles(fileList) {
   uploadProgressPanel.classList.add("hidden");
   showToast(files.length === 1 ? "Archivo subido" : `${files.length} archivos subidos`, "success");
   fileInput.value = "";
+  if (folderInput) folderInput.value = "";
   loadFiles();
 }
 
@@ -1777,7 +2009,45 @@ function renderDocxPreview(blocks) {
   return page;
 }
 
+function getPreviewableFiles() {
+  return state.items.filter((i) => !i.is_dir);
+}
+
+function navigatePreview(delta) {
+  if (!state.previewItem || previewModal.classList.contains("hidden")) return;
+  const files = getPreviewableFiles();
+  if (files.length <= 1) return;
+  const idx = files.findIndex((f) => f.path === state.previewItem.path);
+  if (idx === -1) return;
+  const nextIdx = (idx + delta + files.length) % files.length;
+  openPreview(files[nextIdx]);
+}
+
+if (previewPrevBtn) {
+  previewPrevBtn.addEventListener("click", () => navigatePreview(-1));
+}
+if (previewNextBtn) {
+  previewNextBtn.addEventListener("click", () => navigatePreview(1));
+}
+
+window.addEventListener("keydown", (e) => {
+  if (previewModal.classList.contains("hidden")) return;
+  const tag = (e.target && e.target.tagName) || "";
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+  if (e.key === "ArrowLeft") {
+    e.preventDefault();
+    navigatePreview(-1);
+  } else if (e.key === "ArrowRight") {
+    e.preventDefault();
+    navigatePreview(1);
+  } else if (e.key === "Escape") {
+    previewContent.innerHTML = "";
+    previewModal.classList.add("hidden");
+  }
+});
+
 async function openPreview(item) {
+  state.previewItem = item;
   const inlineUrl = `/api/download?path=${encodeURIComponent(item.path)}&inline=1`;
   const downloadUrl = `/api/download?path=${encodeURIComponent(item.path)}`;
 
@@ -1785,6 +2055,19 @@ async function openPreview(item) {
   previewDownloadBtn.href = downloadUrl;
   previewContent.innerHTML = "";
   previewModal.classList.remove("hidden");
+
+  const files = getPreviewableFiles();
+  const curIdx = files.findIndex((f) => f.path === item.path);
+  if (previewCounter) {
+    if (curIdx !== -1 && files.length > 0) {
+      previewCounter.textContent = `${curIdx + 1} / ${files.length}`;
+      previewCounter.classList.remove("hidden");
+    } else {
+      previewCounter.classList.add("hidden");
+    }
+  }
+  if (previewPrevBtn) previewPrevBtn.disabled = files.length <= 1;
+  if (previewNextBtn) previewNextBtn.disabled = files.length <= 1;
 
   const mime = item.mime || "";
   const lowerName = item.name.toLowerCase();
@@ -1931,6 +2214,11 @@ document.getElementById("previewCloseBtn").addEventListener("click", () => {
 // --- Eventos de Barra de Herramientas ---
 uploadBtn.addEventListener("click", () => fileInput.click());
 fileInput.addEventListener("change", (e) => uploadFiles(e.target.files));
+
+if (uploadFolderBtn && folderInput) {
+  uploadFolderBtn.addEventListener("click", () => folderInput.click());
+  folderInput.addEventListener("change", (e) => uploadFiles(e.target.files));
+}
 
 newFolderBtn.addEventListener("click", () => {
   openPromptModal({
