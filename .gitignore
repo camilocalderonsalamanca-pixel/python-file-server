@@ -6,12 +6,21 @@ venv/
 .venv/
 env/
 
-# Environment variables
+# Environment variables & Databases
 .env
+*.db
+*.sqlite3
 
 # Storage directory content (keep folder if tracked, ignore uploaded files)
 storage/*
 !storage/.gitkeep
+.trash/
+
+# SSL Certificates
+certs/
+*.pem
+*.key
+*.crt
 
 # IDE & OS
 .vscode/

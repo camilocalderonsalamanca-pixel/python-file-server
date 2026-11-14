@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Python File Server</title>
+  <title>Python File Server v2.0</title>
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
@@ -29,19 +29,28 @@
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
           </svg>
         </div>
-        <span class="brand-title">File Server</span>
+        <span class="brand-title">File Server <small class="badge-v">v2.0</small></span>
       </div>
 
-      <div class="search-wrapper">
+      <!-- Pestañas de Navegación -->
+      <nav class="nav-tabs">
+        <button class="nav-tab active" data-tab="files" id="tabBtnFiles">📁 Archivos</button>
+        <button class="nav-tab" data-tab="trash" id="tabBtnTrash">🗑️ Papelera</button>
+        <button class="nav-tab" data-tab="shares" id="tabBtnShares">🔗 Compartidos</button>
+        <button class="nav-tab admin-only hidden" data-tab="users" id="tabBtnUsers">👥 Usuarios</button>
+        <button class="nav-tab admin-only hidden" data-tab="audit" id="tabBtnAudit">🛡️ Auditoría</button>
+      </nav>
+    </div>
+
+    <div class="topbar-right">
+      <div class="search-wrapper" id="searchWrapper">
         <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="11" cy="11" r="8"></circle>
           <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         </svg>
-        <input type="search" id="searchInput" placeholder="Buscar archivos o carpetas..." autocomplete="off" />
+        <input type="search" id="searchInput" placeholder="Buscar archivos..." autocomplete="off" />
       </div>
-    </div>
 
-    <div class="topbar-right">
       <div class="disk-info" id="diskInfo" title="Espacio en disco">
         <div class="disk-text">
           <span id="diskLabel">Cargando disco...</span>
@@ -51,6 +60,8 @@
         </div>
       </div>
 
+      <span class="user-pill" id="userBadge" title="Usuario actual"></span>
+
       <button class="btn btn-icon" id="themeToggleBtn" title="Cambiar tema (Claro / Oscuro)">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
@@ -58,94 +69,191 @@
       </button>
 
       <button class="btn btn-outline btn-sm" id="logoutBtn" title="Cerrar sesión">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-          <polyline points="16 17 21 12 16 7"></polyline>
-          <line x1="21" y1="12" x2="9" y2="12"></line>
-        </svg>
-        <span class="hide-mobile">Salir</span>
+        <span>Salir</span>
       </button>
     </div>
   </header>
 
   <!-- Contenedor Principal -->
   <main class="container">
-    <!-- Barra de acciones y Breadcrumbs -->
-    <div class="toolbar">
-      <nav class="breadcrumbs" id="breadcrumbs" aria-label="Ruta actual"></nav>
+    <!-- ==================== SECCIÓN 1: ARCHIVOS ==================== -->
+    <section id="sectionFiles">
+      <div class="toolbar">
+        <nav class="breadcrumbs" id="breadcrumbs" aria-label="Ruta actual"></nav>
 
-      <div class="toolbar-actions">
-        <input type="file" id="fileInput" multiple class="hidden" />
-        <button class="btn btn-primary" id="uploadBtn">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="17 8 12 3 7 8"></polyline>
-            <line x1="12" y1="3" x2="12" y2="15"></line>
-          </svg>
-          <span>Subir Archivos</span>
-        </button>
+        <div class="toolbar-actions">
+          <input type="file" id="fileInput" multiple class="hidden" />
+          <button class="btn btn-primary write-only" id="uploadBtn">
+            <span>⬆️ Subir</span>
+          </button>
 
-        <button class="btn btn-secondary" id="newFolderBtn">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-            <line x1="12" y1="11" x2="12" y2="17"></line>
-            <line x1="9" y1="14" x2="15" y2="14"></line>
-          </svg>
-          <span>Nueva Carpeta</span>
-        </button>
+          <button class="btn btn-secondary write-only" id="newFolderBtn">
+            <span>📁 Nueva Carpeta</span>
+          </button>
 
-        <button class="btn btn-outline" id="downloadZipBtn" title="Descargar carpeta actual en ZIP">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>
-          <span class="hide-mobile">ZIP</span>
-        </button>
+          <button class="btn btn-secondary write-only" id="newTextFileBtn">
+            <span>📝 Nuevo Archivo</span>
+          </button>
+
+          <button class="btn btn-outline" id="downloadZipBtn" title="Descargar carpeta actual en ZIP">
+            <span>📦 ZIP</span>
+          </button>
+
+          <button class="btn btn-icon" id="viewModeBtn" title="Alternar Vista Tabla / Galería">
+            <span id="viewModeIcon">⊞</span>
+          </button>
+        </div>
       </div>
-    </div>
 
-    <!-- Barra de progreso de subida -->
-    <div id="uploadProgressPanel" class="upload-panel hidden">
-      <div class="upload-panel-header">
-        <span id="uploadStatusText">Subiendo archivos...</span>
-        <span id="uploadPercentText">0%</span>
+      <!-- Barra de Acciones Masivas (Selección múltiple) -->
+      <div id="bulkBar" class="bulk-bar hidden">
+        <span id="bulkCount">0 seleccionados</span>
+        <div class="bulk-actions">
+          <button class="btn btn-sm btn-outline" id="bulkZipBtn">📦 Descargar ZIP</button>
+          <button class="btn btn-sm btn-outline write-only" id="bulkMoveBtn">📂 Mover a...</button>
+          <button class="btn btn-sm btn-danger admin-only" id="bulkDeleteBtn">🗑️ Enviar a Papelera</button>
+          <button class="btn btn-sm btn-outline" id="bulkClearBtn">Cancelar</button>
+        </div>
       </div>
-      <div class="progress-track">
-        <div id="uploadProgressBar" class="progress-fill" style="width: 0%"></div>
-      </div>
-    </div>
 
-    <!-- Tabla de Archivos -->
-    <div class="card file-card">
-      <div class="table-responsive">
-        <table class="file-table">
-          <thead>
-            <tr>
-              <th class="col-name">Nombre</th>
-              <th class="col-size">Tamaño</th>
-              <th class="col-date">Modificado</th>
-              <th class="col-actions">Acciones</th>
-            </tr>
-          </thead>
-          <tbody id="fileTableBody">
-            <!-- Filas dinámicas -->
-          </tbody>
-        </table>
+      <!-- Barra de progreso de subida -->
+      <div id="uploadProgressPanel" class="upload-panel hidden">
+        <div class="upload-panel-header">
+          <span id="uploadStatusText">Subiendo archivos...</span>
+          <span id="uploadPercentText">0%</span>
+        </div>
+        <div class="progress-track">
+          <div id="uploadProgressBar" class="progress-fill" style="width: 0%"></div>
+        </div>
       </div>
+
+      <!-- Vista Tabla -->
+      <div class="card file-card" id="tableViewContainer">
+        <div class="table-responsive">
+          <table class="file-table">
+            <thead>
+              <tr>
+                <th class="col-check"><input type="checkbox" id="selectAllCheckbox" /></th>
+                <th class="col-name">Nombre</th>
+                <th class="col-size">Tamaño</th>
+                <th class="col-date">Modificado</th>
+                <th class="col-actions">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="fileTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Vista Cuadrícula (Grid View) -->
+      <div id="gridViewContainer" class="grid-container hidden"></div>
 
       <!-- Estado vacío -->
-      <div id="emptyState" class="empty-state hidden">
-        <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-        </svg>
+      <div id="emptyState" class="empty-state card hidden">
         <h3>Esta carpeta está vacía</h3>
-        <p>Arrastra archivos aquí o usa el botón "Subir Archivos" para comenzar.</p>
+        <p>Arrastra archivos aquí o usa el botón "Subir" para comenzar.</p>
       </div>
-    </div>
+    </section>
+
+    <!-- ==================== SECCIÓN 2: PAPELERA ==================== -->
+    <section id="sectionTrash" class="hidden">
+      <div class="toolbar">
+        <h2>🗑️ Papelera de Reciclaje</h2>
+        <button class="btn btn-danger admin-only" id="emptyTrashBtn">Vaciar Papelera Definitivamente</button>
+      </div>
+      <div class="card">
+        <div class="table-responsive">
+          <table class="file-table">
+            <thead>
+              <tr>
+                <th>Nombre Original</th>
+                <th>Ruta Original</th>
+                <th>Tamaño</th>
+                <th>Eliminado por</th>
+                <th>Fecha</th>
+                <th class="col-actions">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="trashTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SECCIÓN 3: ENLACES COMPARTIDOS ==================== -->
+    <section id="sectionShares" class="hidden">
+      <div class="toolbar">
+        <h2>🔗 Enlaces Públicos Activos</h2>
+      </div>
+      <div class="card">
+        <div class="table-responsive">
+          <table class="file-table">
+            <thead>
+              <tr>
+                <th>Archivo / Carpeta</th>
+                <th>Enlace Público</th>
+                <th>Descargas</th>
+                <th>Expira</th>
+                <th>Protegido</th>
+                <th class="col-actions">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="sharesTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SECCIÓN 4: USUARIOS (ADMIN) ==================== -->
+    <section id="sectionUsers" class="hidden">
+      <div class="toolbar">
+        <h2>👥 Gestión de Usuarios y Roles</h2>
+        <button class="btn btn-primary" id="newUserBtn">➕ Crear / Editar Usuario</button>
+      </div>
+      <div class="card">
+        <div class="table-responsive">
+          <table class="file-table">
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Rol</th>
+                <th>Creado</th>
+                <th class="col-actions">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SECCIÓN 5: AUDITORÍA (ADMIN) ==================== -->
+    <section id="sectionAudit" class="hidden">
+      <div class="toolbar">
+        <h2>🛡️ Registro de Actividad y Seguridad</h2>
+        <button class="btn btn-outline" id="refreshAuditBtn">🔄 Actualizar</button>
+      </div>
+      <div class="card">
+        <div class="table-responsive">
+          <table class="file-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Usuario</th>
+                <th>IP</th>
+                <th>Acción</th>
+                <th>Objetivo</th>
+                <th>Detalles</th>
+              </tr>
+            </thead>
+            <tbody id="auditTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
   </main>
 
-  <!-- Modal Genérico (Crear carpeta / Renombrar) -->
+  <!-- Modal Prompt Genérico -->
   <div id="promptModal" class="modal-backdrop hidden">
     <div class="modal">
       <div class="modal-header">
@@ -159,13 +267,99 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" id="promptCancelBtn">Cancelar</button>
-          <button type="submit" class="btn btn-primary" id="promptConfirmBtn">Guardar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Modal Vista Previa -->
+  <!-- Modal Compartir Enlace -->
+  <div id="shareModal" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>🔗 Compartir Enlace Público</h3>
+        <button class="btn-close" id="shareCloseBtn">&times;</button>
+      </div>
+      <form id="shareForm">
+        <div class="modal-body">
+          <p id="shareTargetLabel" style="margin-bottom:0.85rem; font-size:0.9rem; color:var(--text-muted);"></p>
+          <div class="form-group">
+            <label>Expiración en horas (opcional, vacío = sin expiración)</label>
+            <input type="number" id="shareHoursInput" min="1" placeholder="Ej. 24" />
+          </div>
+          <div class="form-group">
+            <label>Límite máximo de descargas (opcional)</label>
+            <input type="number" id="shareMaxDlInput" min="1" placeholder="Ej. 10" />
+          </div>
+          <div class="form-group">
+            <label>Contraseña de protección (opcional)</label>
+            <input type="password" id="sharePasswordInput" placeholder="Dejar vacío para acceso libre" />
+          </div>
+          <div id="shareResultBox" class="alert-success hidden" style="margin-top:1rem;">
+            <label>Enlace generado (copiado al portapapeles):</label>
+            <input type="text" id="shareResultUrl" readonly />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" id="shareCancelBtn">Cerrar</button>
+          <button type="submit" class="btn btn-primary">Generar Enlace</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Editor de Texto / Código -->
+  <div id="editorModal" class="modal-backdrop hidden">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <h3 id="editorTitle">📝 Editor de Archivo</h3>
+        <button class="btn-close" id="editorCloseBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <textarea id="editorTextarea" class="code-editor" rows="18" spellcheck="false"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" id="editorCancelBtn">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="editorSaveBtn">💾 Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Usuario (Crear / Editar) -->
+  <div id="userModal" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>👥 Crear / Actualizar Usuario</h3>
+        <button class="btn-close" id="userCloseBtn">&times;</button>
+      </div>
+      <form id="userForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Nombre de usuario</label>
+            <input type="text" id="userFormName" required placeholder="Ej. juan" />
+          </div>
+          <div class="form-group">
+            <label>Contraseña (dejar en blanco si solo cambias el rol)</label>
+            <input type="password" id="userFormPass" placeholder="••••••••" />
+          </div>
+          <div class="form-group">
+            <label>Rol de permisos</label>
+            <select id="userFormRole" class="form-select">
+              <option value="viewer">Lector (Solo ver y descargar)</option>
+              <option value="editor">Editor (Subir, crear, editar, renombrar)</option>
+              <option value="admin">Administrador (Control total + Usuarios + Borrar)</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" id="userCancelBtn">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Usuario</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Vista Previa (Imagen, Video, Audio, PDF, Texto) -->
   <div id="previewModal" class="modal-backdrop hidden">
     <div class="modal modal-lg">
       <div class="modal-header">
@@ -174,7 +368,8 @@
       </div>
       <div class="modal-body preview-container" id="previewContent"></div>
       <div class="modal-footer">
-        <a id="previewDownloadBtn" href="#" class="btn btn-primary" download>Descargar Archivo</a>
+        <button type="button" class="btn btn-secondary write-only hidden" id="previewEditBtn">📝 Editar Texto</button>
+        <a id="previewDownloadBtn" href="#" class="btn btn-primary" download>⬇️ Descargar</a>
       </div>
     </div>
   </div>
