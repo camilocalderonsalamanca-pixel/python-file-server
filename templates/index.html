@@ -38,6 +38,9 @@
         <button class="nav-tab active" data-tab="files" id="tabBtnFiles">
           <i class="fas fa-folder-open"></i> Archivos
         </button>
+        <button class="nav-tab" data-tab="stats" id="tabBtnStats">
+          <i class="fas fa-chart-pie"></i> Estadísticas
+        </button>
         <button class="nav-tab" data-tab="trash" id="tabBtnTrash">
           <i class="fas fa-trash-can"></i> Papelera
         </button>
@@ -56,7 +59,7 @@
     <div class="topbar-right">
       <div class="search-wrapper" id="searchWrapper">
         <i class="fas fa-magnifying-glass search-icon"></i>
-        <input type="search" id="searchInput" placeholder="Buscar en el repositorio..." autocomplete="off" />
+        <input type="search" id="searchInput" placeholder="Buscar por nombre, etiqueta o nota..." autocomplete="off" />
       </div>
 
       <div class="disk-info" id="diskInfo" title="Espacio de almacenamiento">
@@ -117,6 +120,33 @@
           </div>
         </div>
 
+        <!-- Barra de Filtros Rápidos (Favoritos y Etiquetas Institucionales) -->
+        <div class="filter-bar">
+          <div class="filter-group">
+            <button class="filter-chip active" id="filterAllBtn" title="Ver todos los elementos de la carpeta">
+              <i class="fas fa-layer-group"></i> Todos
+            </button>
+            <button class="filter-chip" id="filterFavBtn" title="Ver mis archivos y carpetas marcados con estrella">
+              <i class="fas fa-star" style="color: var(--icfd-gold);"></i> Mis Favoritos
+            </button>
+          </div>
+
+          <div class="filter-group">
+            <label for="tagFilterSelect" class="filter-label"><i class="fas fa-tags"></i> Etiqueta:</label>
+            <select id="tagFilterSelect" class="filter-select">
+              <option value="">Todas las etiquetas</option>
+              <option value="Contabilidad">Contabilidad</option>
+              <option value="Tesorería">Tesorería</option>
+              <option value="Actas">Actas</option>
+              <option value="Secretaría">Secretaría</option>
+              <option value="Directiva">Directiva</option>
+              <option value="Aprobado">Aprobado</option>
+              <option value="Pendiente">Pendiente</option>
+              <option value="Urgente">Urgente</option>
+            </select>
+          </div>
+        </div>
+
         <!-- Barra de Acciones Masivas (Selección múltiple) -->
         <div id="bulkBar" class="bulk-bar hidden">
           <span id="bulkCount">0 seleccionados</span>
@@ -146,9 +176,15 @@
               <thead>
                 <tr>
                   <th class="col-check"><input type="checkbox" id="selectAllCheckbox" /></th>
-                  <th class="col-name">Nombre del Documento / Carpeta</th>
-                  <th class="col-size">Tamaño</th>
-                  <th class="col-date">Última Modificación</th>
+                  <th class="col-name sortable-th" data-sort="name">
+                    Nombre del Documento / Carpeta <span class="sort-indicator" id="sortIcon_name">▲</span>
+                  </th>
+                  <th class="col-size sortable-th" data-sort="size">
+                    Tamaño <span class="sort-indicator" id="sortIcon_size"></span>
+                  </th>
+                  <th class="col-date sortable-th" data-sort="mtime">
+                    Última Modificación <span class="sort-indicator" id="sortIcon_mtime"></span>
+                  </th>
                   <th class="col-actions">Acciones</th>
                 </tr>
               </thead>
@@ -163,12 +199,47 @@
         <!-- Estado vacío -->
         <div id="emptyState" class="empty-state card hidden">
           <i class="fas fa-folder-open" style="font-size: 2.8rem; color: var(--icfd-gold); margin-bottom: 0.75rem;"></i>
-          <h3>Esta carpeta se encuentra vacía</h3>
+          <h3>No se encontraron documentos en esta vista</h3>
           <p>Arrastre archivos aquí o utilice el botón "Subir Archivos" para agregar documentos.</p>
         </div>
       </section>
 
-      <!-- ==================== SECCIÓN 2: PAPELERA ==================== -->
+      <!-- ==================== SECCIÓN 2: ESTADÍSTICAS (DASHBOARD) ==================== -->
+      <section id="sectionStats" class="hidden">
+        <div class="toolbar">
+          <h2 class="section-heading"><i class="fas fa-chart-pie"></i> Panel de Estadísticas de Almacenamiento</h2>
+          <button class="btn btn-outline" id="refreshStatsBtn">
+            <i class="fas fa-arrows-rotate"></i> Actualizar
+          </button>
+        </div>
+
+        <div class="stats-kpi-grid" id="statsKpiGrid"></div>
+
+        <div class="stats-two-col">
+          <div class="card stats-panel">
+            <h3 class="panel-subtitle"><i class="fas fa-layer-group"></i> Distribución por Tipo de Archivo</h3>
+            <div id="statsCategoriesList" class="stats-categories"></div>
+          </div>
+
+          <div class="card stats-panel">
+            <h3 class="panel-subtitle"><i class="fas fa-weight-hanging"></i> Top 10 Archivos más Pesados</h3>
+            <div class="table-responsive">
+              <table class="file-table">
+                <thead>
+                  <tr>
+                    <th>Archivo</th>
+                    <th class="col-size">Tamaño</th>
+                    <th class="col-actions">Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="statsLargestTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== SECCIÓN 3: PAPELERA ==================== -->
       <section id="sectionTrash" class="hidden">
         <div class="toolbar">
           <h2 class="section-heading"><i class="fas fa-trash-can"></i> Papelera de Reciclaje</h2>
@@ -195,7 +266,7 @@
         </div>
       </section>
 
-      <!-- ==================== SECCIÓN 3: ENLACES COMPARTIDOS ==================== -->
+      <!-- ==================== SECCIÓN 4: ENLACES COMPARTIDOS ==================== -->
       <section id="sectionShares" class="hidden">
         <div class="toolbar">
           <h2 class="section-heading"><i class="fas fa-share-nodes"></i> Enlaces Públicos Activos</h2>
@@ -219,7 +290,7 @@
         </div>
       </section>
 
-      <!-- ==================== SECCIÓN 4: USUARIOS (ADMIN) ==================== -->
+      <!-- ==================== SECCIÓN 5: USUARIOS (ADMIN) ==================== -->
       <section id="sectionUsers" class="hidden">
         <div class="toolbar">
           <h2 class="section-heading"><i class="fas fa-users-gear"></i> Gestión de Usuarios y Roles</h2>
@@ -244,7 +315,7 @@
         </div>
       </section>
 
-      <!-- ==================== SECCIÓN 5: AUDITORÍA (ADMIN) ==================== -->
+      <!-- ==================== SECCIÓN 6: AUDITORÍA (ADMIN) ==================== -->
       <section id="sectionAudit" class="hidden">
         <div class="toolbar">
           <h2 class="section-heading"><i class="fas fa-shield-halved"></i> Registro de Actividad y Auditoría</h2>
@@ -281,10 +352,13 @@
         <span style="margin-left: 0.75rem;">· Repositorio Institucional de Archivos</span>
       </div>
       <div>
-        <span>Archivos ICFD v2.0 · 2026</span>
+        <span>Archivos ICFD v3.0 · 2026</span>
       </div>
     </div>
   </footer>
+
+  <!-- Menú Contextual Flotante (Clic Derecho) -->
+  <div id="contextMenu" class="context-menu hidden"></div>
 
   <!-- Modal Prompt Genérico -->
   <div id="promptModal" class="modal-backdrop hidden">
@@ -301,6 +375,124 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" id="promptCancelBtn">Cancelar</button>
           <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Etiquetas Institucionales y Nota -->
+  <div id="metaModal" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h3><i class="fas fa-tags"></i> Etiquetas Institucionales y Nota</h3>
+        <button class="btn-close" id="metaCloseBtn">&times;</button>
+      </div>
+      <form id="metaForm">
+        <div class="modal-body">
+          <p id="metaTargetLabel" style="margin-bottom:0.85rem; font-size:0.9rem; color:var(--text-muted); font-weight:600;"></p>
+
+          <div class="form-group">
+            <label>Etiquetas Institucionales (clic para activar/desactivar)</label>
+            <div class="preset-tags-grid" id="presetTagsContainer">
+              <button type="button" class="tag-toggle-btn" data-tag="Contabilidad">Contabilidad</button>
+              <button type="button" class="tag-toggle-btn" data-tag="Tesorería">Tesorería</button>
+              <button type="button" class="tag-toggle-btn" data-tag="Actas">Actas</button>
+              <button type="button" class="tag-toggle-btn" data-tag="Secretaría">Secretaría</button>
+              <button type="button" class="tag-toggle-btn" data-tag="Directiva">Directiva</button>
+              <button type="button" class="tag-toggle-btn" data-tag="Aprobado">Aprobado</button>
+              <button type="button" class="tag-toggle-btn" data-tag="Pendiente">Pendiente</button>
+              <button type="button" class="tag-toggle-btn" data-tag="Urgente">Urgente</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="metaCustomTagInput">Etiquetas adicionales (separadas por coma)</label>
+            <input type="text" id="metaCustomTagInput" placeholder="Ej. Sede Norte, 2026, Auditoría" />
+          </div>
+
+          <div class="form-group">
+            <label for="metaNoteInput">Nota / Observación del documento</label>
+            <textarea id="metaNoteInput" rows="3" class="form-textarea" placeholder="Ej. Aprobado en reunión de directorio..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" id="metaCancelBtn">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-floppy-disk"></i> Guardar Clasificación</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Historial de Versiones -->
+  <div id="versionsModal" class="modal-backdrop hidden">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <h3><i class="fas fa-clock-rotate-left"></i> Historial de Versiones</h3>
+        <button class="btn-close" id="versionsCloseBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="versionsTargetLabel" style="margin-bottom:0.85rem; font-size:0.92rem; color:var(--text-muted); font-weight:600;"></p>
+        <div class="table-responsive">
+          <table class="file-table">
+            <thead>
+              <tr>
+                <th>Fecha de Respaldo</th>
+                <th>Usuario</th>
+                <th>Tamaño</th>
+                <th>Motivo</th>
+                <th class="col-actions">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="versionsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" id="versionsCloseFooterBtn">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Permisos de Carpeta (Admin) -->
+  <div id="permissionsModal" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h3><i class="fas fa-lock"></i> Permisos de Acceso a Carpeta</h3>
+        <button class="btn-close" id="permCloseBtn">&times;</button>
+      </div>
+      <form id="permForm">
+        <div class="modal-body">
+          <p id="permTargetLabel" style="margin-bottom:0.85rem; font-size:0.92rem; color:var(--text-muted); font-weight:600;"></p>
+
+          <div class="form-group">
+            <label class="checkbox-row">
+              <input type="checkbox" id="permRestrictCheck" />
+              <span><b>Restringir acceso a esta carpeta (Carpeta Privada)</b></span>
+            </label>
+            <small style="color:var(--text-muted); display:block; margin-top:4px;">
+              Si se activa, solo los Administradores y los roles/usuarios marcados abajo podrán ver o abrir esta carpeta y sus subcarpetas.
+            </small>
+          </div>
+
+          <div id="permDetailsBox">
+            <div class="form-group">
+              <label>Roles con acceso permitido</label>
+              <div class="checkbox-grid">
+                <label class="checkbox-pill"><input type="checkbox" value="admin" checked disabled /> Administrador (Siempre)</label>
+                <label class="checkbox-pill"><input type="checkbox" class="perm-role-cb" value="editor" /> Editor</label>
+                <label class="checkbox-pill"><input type="checkbox" class="perm-role-cb" value="viewer" /> Lector</label>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Usuarios específicos con acceso permitido</label>
+              <div id="permUsersList" class="checkbox-grid"></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" id="permCancelBtn">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-shield-check"></i> Guardar Permisos</button>
         </div>
       </form>
     </div>
@@ -392,22 +584,22 @@
     </div>
   </div>
 
-  <!-- Modal Vista Previa -->
+  <!-- Modal Vista Previa (Multimedia, PDF, Excel, Word, Código) -->
   <div id="previewModal" class="modal-backdrop hidden">
     <div class="modal modal-lg">
       <div class="modal-header">
         <h3 id="previewTitle">Vista Previa</h3>
         <button class="btn-close" id="previewCloseBtn">&times;</button>
       </div>
-      <div class="modal-body preview-container" id="previewContent"></div>
+      <div class="modal-body preview-body" id="previewContent"></div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary write-only hidden" id="previewEditBtn"><i class="fas fa-pen-to-square"></i> Editar Texto</button>
-        <a id="previewDownloadBtn" href="#" class="btn btn-primary" download><i class="fas fa-download"></i> Descargar</a>
+        <button type="button" class="btn btn-outline hidden" id="previewEditBtn"><i class="fas fa-pen-to-square"></i> Editar Texto</button>
+        <a id="previewDownloadBtn" class="btn btn-primary" href="#" download><i class="fas fa-download"></i> Descargar</a>
       </div>
     </div>
   </div>
 
-  <!-- Contenedor de Notificaciones Toast -->
+  <!-- Notificaciones Toast -->
   <div id="toastContainer" class="toast-container"></div>
 
   <script src="/static/app.js"></script>

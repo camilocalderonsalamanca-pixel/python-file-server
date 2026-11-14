@@ -11,7 +11,7 @@
 - **Estilo visual:** Acabado **Glossy / Glassmorphism** (reflejos especulares en barra superior, encabezados y botones, más desenfoque de cristal `backdrop-filter: blur(18px)` en tarjetas y modales) conservando estrictamente los colores institucionales de ICFD.
 - **Tipografías:** `Cormorant Garamond` (títulos y encabezados formales) y `Source Sans 3` (interfaz, tablas y controles), más iconos de **Font Awesome 6**.
 
-## 2. Arquitectura y Funciones Actuales (`v2.0 Enterprise Edition`)
+## 2. Arquitectura y Funciones Actuales (`v3.0 Enterprise Edition`)
 - **Archivo principal:** [server.py](file:///home/ccalderon/Documentos/Proyectos/File%20Server/server.py) (Servidor HTTP/HTTPS en Python puro con `ThreadingHTTPServer` y base de datos SQLite en `fileserver.db`, sin dependencias externas obligatorias).
 - **Plantillas y estilos:** [templates/index.html](file:///home/ccalderon/Documentos/Proyectos/File%20Server/templates/index.html), [templates/login.html](file:///home/ccalderon/Documentos/Proyectos/File%20Server/templates/login.html), [static/styles.css](file:///home/ccalderon/Documentos/Proyectos/File%20Server/static/styles.css), [static/app.js](file:///home/ccalderon/Documentos/Proyectos/File%20Server/static/app.js).
 - **Funciones implementadas:**
@@ -21,6 +21,11 @@
   4. **Operaciones en Lote, Descompresión y Editor**: Selección múltiple (ZIP, mover, borrar), extracción directa de `.zip`/`.tar.gz` y editor de texto/código integrado.
   5. **Vista Galería / Tabla, Visor PDF y Streaming**: Soporte `HTTP 206 Partial Content` (`Range`) para adelantar/atrasar video y audio, vista de miniaturas y visor PDF.
   6. **Seguridad y Auditoría**: Protección contra fuerza bruta (*Rate Limiting* por IP), soporte SSL (`--ssl-cert`, `--ssl-key`) y registro de auditoría en tiempo real (`audit_logs`).
+  7. **Historial de Versiones (`.versions`)**: Respaldo automático cada vez que se sobrescribe o edita un archivo, con descarga y restauración de versiones previas.
+  8. **Etiquetas Institucionales, Notas y Favoritos (⭐)**: Etiquetas predefinidas (`Contabilidad`, `Tesorería`, `Actas`, `Secretaría`, `Directiva`, `Aprobado`, `Pendiente`, `Urgente`) y personalizadas, notas por archivo y filtro de favoritos por usuario.
+  9. **Visor Integrado de Excel (`.xlsx`, `.csv`, `.tsv`) y Word (`.docx`)**: Lector nativo 100% autónomo (sin depender de internet) con pestañas de hojas, buscador de filas y vista de documento.
+  10. **Ordenamiento por Columnas, Menú Contextual (Clic Derecho) y Dashboard de Estadísticas**: Ordenamiento por nombre/tamaño/fecha, menú flotante con clic derecho y pestaña `Estadísticas` con desglose por categoría y top 10 archivos más pesados.
+  11. **Carpetas Privadas / Restringidas (ACL por Rol y Usuario)**: Control de acceso por carpeta con herencia a subcarpetas (`folder_permissions`).
 
 ## 3. Repositorio en GitHub
 - **Cuenta de GitHub:** `camilocalderonsalamanca-pixel`
