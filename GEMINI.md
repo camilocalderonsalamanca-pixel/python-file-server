@@ -14,23 +14,25 @@
 ## 2. Arquitectura y Funciones Actuales (`v3.0 Enterprise Edition`)
 - **Archivo principal:** [server.py](file:///home/ccalderon/Documentos/Proyectos/File%20Server/server.py) (Servidor HTTP/HTTPS en Python puro con `ThreadingHTTPServer` y base de datos SQLite en `fileserver.db`, sin dependencias externas obligatorias).
 - **Plantillas y estilos:** [templates/index.html](file:///home/ccalderon/Documentos/Proyectos/File%20Server/templates/index.html), [templates/login.html](file:///home/ccalderon/Documentos/Proyectos/File%20Server/templates/login.html), [static/styles.css](file:///home/ccalderon/Documentos/Proyectos/File%20Server/static/styles.css), [static/app.js](file:///home/ccalderon/Documentos/Proyectos/File%20Server/static/app.js).
+- **Librerías locales Offline para Visor Office:** [static/vendor/xlsx.full.min.js](file:///home/ccalderon/Documentos/Proyectos/File%20Server/static/vendor/xlsx.full.min.js) (SheetJS) y [static/vendor/mammoth.browser.min.js](file:///home/ccalderon/Documentos/Proyectos/File%20Server/static/vendor/mammoth.browser.min.js) (Mammoth.js).
+- **Script de aprovisionamiento automático:** [deploy/setup_server.sh](file:///home/ccalderon/Documentos/Proyectos/File%20Server/deploy/setup_server.sh) (instala y configura `systemd`, `nginx`, `avahi-daemon`, `avahi-alias-fileserver.service` y `dnsmasq`).
 - **Funciones implementadas:**
   1. **Enlaces Públicos Compartibles (`/s/<token>`)**: Con expiración por horas, límite de descargas y contraseña opcional.
   2. **Multi-usuario y Roles (RBAC)**: Roles `admin` (control total), `editor` (subir/crear/editar sin borrar) y `viewer` (solo lectura/descarga), con contraseñas cifradas (`PBKDF2-HMAC-SHA256`).
-  3. **Papelera de Reciclaje (`.trash`)**: Eliminación suave con restauración a ruta original o vaciado definitivo.
-  4. **Operaciones en Lote, Descompresión y Editor**: Selección múltiple (ZIP, mover, borrar), extracción directa de `.zip`/`.tar.gz` y editor de texto/código integrado.
-  5. **Vista Galería / Tabla, Visor PDF y Streaming**: Soporte `HTTP 206 Partial Content` (`Range`) para adelantar/atrasar video y audio, vista de miniaturas y visor PDF.
+  3. **Papelera de Reciclaje con Purga Automática a los 30 Días (`.trash`)**: Eliminación suave con restauración a ruta original, contador de días restantes (`⏳ En X días`), eliminación definitiva individual (`/api/trash/delete`), vaciado total y purga automática permanente a los **30 días** (`purge_expired_trash`, configurable vía `TRASH_RETENTION_DAYS`).
+  4. **Operaciones en Lote, Descompresión y Editor**: Selección múltiple (ZIP, copiar, mover, borrar), extracción directa de `.zip`/`.tar.gz` y editor de texto/código integrado.
+  5. **Vista Galería / Tabla, Visor PDF y Streaming**: Soporte `HTTP 206 Partial Content` (`Range`) para adelantar/atrasar video y audio, vista de miniaturas y visor PDF integrado con botón para abrir en pestaña nueva.
   6. **Seguridad y Auditoría**: Protección contra fuerza bruta (*Rate Limiting* por IP), soporte SSL (`--ssl-cert`, `--ssl-key`) y registro de auditoría en tiempo real (`audit_logs`).
   7. **Historial de Versiones (`.versions`)**: Respaldo automático cada vez que se sobrescribe o edita un archivo, con descarga y restauración de versiones previas.
   8. **Etiquetas Institucionales, Notas y Favoritos (⭐)**: Etiquetas predefinidas (`Contabilidad`, `Tesorería`, `Actas`, `Secretaría`, `Directiva`, `Aprobado`, `Pendiente`, `Urgente`) y personalizadas, notas por archivo y filtro de favoritos por usuario.
-  9. **Visor Integrado de Excel (`.xlsx`, `.csv`, `.tsv`) y Word (`.docx`)**: Lector nativo 100% autónomo (sin depender de internet) con pestañas de hojas, buscador de filas y vista de documento.
-  10. **Ordenamiento por Columnas, Menú Contextual (Clic Derecho) y Dashboard de Estadísticas**: Ordenamiento por nombre/tamaño/fecha, menú flotante con clic derecho y pestaña `Estadísticas` con desglose por categoría y top 10 archivos más pesados.
+  9. **Visor Integrado de Excel (`.xlsx`, `.xls`, `.csv`, `.tsv`, `.ods`) y Word (`.docx`, `.doc`, `.rtf`)**: Lector 100% autónomo offline (SheetJS + Mammoth.js + fallback en Python `/api/office-preview`) con pestañas de hojas, buscador de filas, botón `👁️` de vista previa rápida e impresión.
+  10. **Ordenamiento por Columnas, Menú Contextual (Clic Derecho) y Dashboard de Estadísticas**: Ordenamiento por nombre/tamaño/fecha, menú flotante con clic derecho, pestaña `Estadísticas` con desglose por categoría y top 10 archivos más pesados, y prevención de cursor de texto (`caret-color: transparent` / `user-select: none`) en elementos de interfaz.
   11. **Carpetas Privadas / Restringidas (ACL por Rol y Usuario)**: Control de acceso por carpeta con herencia a subcarpetas (`folder_permissions`).
-  12. **Detector de Archivos Duplicados (SHA-256)**: Escaneo inteligente por tamaño y huella `SHA-256` en la pestaña `Estadísticas`, con limpieza en 1 clic de copias redundantes.
+  12. **Detector de Archivos Duplicados (SHA-256) (`/api/duplicates`)**: Escaneo inteligente por tamaño y huella `SHA-256` en la pestaña `Estadísticas`, con limpieza en 1 clic de copias redundantes.
   13. **Respaldo Institucional Completo en 1 Clic (`/api/backup`)**: Exportación `.ZIP` de la base de datos `fileserver.db` (en caliente vía `sqlite3.backup`) junto con todos los archivos y versiones de `storage/`.
-  14. **Mi Perfil (Cambio de Contraseña Personal)**: Cualquier usuario puede actualizar su propia contraseña haciendo clic en su insignia de usuario en la barra superior (`#profileModal`).
+  14. **Mi Perfil (Cambio de Contraseña Personal) (`/api/profile/password`)**: Cualquier usuario puede actualizar su propia contraseña haciendo clic en su insignia de usuario en la barra superior (`#profileModal`).
   15. **Navegación tipo Presentación en Vista Previa (`◀` `▶`)**: Botones Anterior/Siguiente, contador `X / N` y soporte de teclado (`Flecha Izquierda` / `Flecha Derecha`) sin salir del visor.
-  16. **Copiar / Duplicar Elementos y Subida de Carpetas Completas**: Botón `Subir Carpeta` (`webkitdirectory`), duplicación rápida (`- copia`) y copia masiva a otra carpeta.
+  16. **Copiar / Duplicar Elementos (`/api/copy`, `/api/bulk/copy`) y Subida de Carpetas Completas**: Botón `Subir Carpeta` (`webkitdirectory`), duplicación rápida (`- copia`) y copia masiva a otra carpeta.
 
 ## 3. Repositorio en GitHub
 - **Cuenta de GitHub:** `camilocalderonsalamanca-pixel`
