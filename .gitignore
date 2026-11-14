@@ -1,0 +1,20 @@
+# Bytecode & Virtual Environment
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+
+# Environment variables
+.env
+
+# Storage directory content (keep folder if tracked, ignore uploaded files)
+storage/*
+!storage/.gitkeep
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
