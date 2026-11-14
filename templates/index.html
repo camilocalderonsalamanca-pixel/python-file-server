@@ -3,55 +3,63 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Python File Server v2.0</title>
+  <title>Repositorio Institucional · ICFD</title>
+  <!-- Tipografías Institucionales ICFD -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- Font Awesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
   <!-- Dropzone Overlay Global -->
   <div id="dropOverlay" class="drop-overlay hidden">
     <div class="drop-box">
-      <svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-        <polyline points="17 8 12 3 7 8"></polyline>
-        <line x1="12" y1="3" x2="12" y2="15"></line>
-      </svg>
+      <i class="fas fa-cloud-arrow-up" style="font-size: 3.5rem; color: var(--icfd-gold-light);"></i>
       <h2>Suelta tus archivos aquí</h2>
-      <p>Se subirán a la carpeta actual</p>
+      <p>Se subirán directamente a la carpeta actual</p>
     </div>
   </div>
 
-  <!-- Navbar Superior -->
+  <!-- Barra de Navegación Institucional ICFD -->
   <header class="topbar">
     <div class="topbar-left">
       <div class="brand" id="brandHome" title="Ir a la raíz">
-        <div class="brand-icon">
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-          </svg>
+        <img src="/static/img/logo.png" alt="Logo ICFD" class="brand-logo-img" />
+        <div class="brand-text">
+          <span class="brand-name">Archivos ICFD</span>
+          <span class="brand-sub">Familia de Dios</span>
         </div>
-        <span class="brand-title">File Server <small class="badge-v">v2.0</small></span>
       </div>
 
       <!-- Pestañas de Navegación -->
       <nav class="nav-tabs">
-        <button class="nav-tab active" data-tab="files" id="tabBtnFiles">📁 Archivos</button>
-        <button class="nav-tab" data-tab="trash" id="tabBtnTrash">🗑️ Papelera</button>
-        <button class="nav-tab" data-tab="shares" id="tabBtnShares">🔗 Compartidos</button>
-        <button class="nav-tab admin-only hidden" data-tab="users" id="tabBtnUsers">👥 Usuarios</button>
-        <button class="nav-tab admin-only hidden" data-tab="audit" id="tabBtnAudit">🛡️ Auditoría</button>
+        <button class="nav-tab active" data-tab="files" id="tabBtnFiles">
+          <i class="fas fa-folder-open"></i> Archivos
+        </button>
+        <button class="nav-tab" data-tab="trash" id="tabBtnTrash">
+          <i class="fas fa-trash-can"></i> Papelera
+        </button>
+        <button class="nav-tab" data-tab="shares" id="tabBtnShares">
+          <i class="fas fa-share-nodes"></i> Compartidos
+        </button>
+        <button class="nav-tab admin-only hidden" data-tab="users" id="tabBtnUsers">
+          <i class="fas fa-users-gear"></i> Usuarios
+        </button>
+        <button class="nav-tab admin-only hidden" data-tab="audit" id="tabBtnAudit">
+          <i class="fas fa-shield-halved"></i> Auditoría
+        </button>
       </nav>
     </div>
 
     <div class="topbar-right">
       <div class="search-wrapper" id="searchWrapper">
-        <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8"></circle>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        </svg>
-        <input type="search" id="searchInput" placeholder="Buscar archivos..." autocomplete="off" />
+        <i class="fas fa-magnifying-glass search-icon"></i>
+        <input type="search" id="searchInput" placeholder="Buscar en el repositorio..." autocomplete="off" />
       </div>
 
-      <div class="disk-info" id="diskInfo" title="Espacio en disco">
+      <div class="disk-info" id="diskInfo" title="Espacio de almacenamiento">
         <div class="disk-text">
           <span id="diskLabel">Cargando disco...</span>
         </div>
@@ -60,198 +68,223 @@
         </div>
       </div>
 
-      <span class="user-pill" id="userBadge" title="Usuario actual"></span>
+      <span class="user-pill" id="userBadge" title="Usuario activo"></span>
 
-      <button class="btn btn-icon" id="themeToggleBtn" title="Cambiar tema (Claro / Oscuro)">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-        </svg>
+      <button class="btn btn-nav-icon" id="themeToggleBtn" title="Cambiar modo de color (Marfil / Oscuro)">
+        <i class="fas fa-moon"></i>
       </button>
 
-      <button class="btn btn-outline btn-sm" id="logoutBtn" title="Cerrar sesión">
-        <span>Salir</span>
+      <button class="btn btn-nav-logout" id="logoutBtn" title="Cerrar sesión">
+        <i class="fas fa-right-from-bracket"></i>
+        <span class="hide-mobile">Salir</span>
       </button>
     </div>
   </header>
 
-  <!-- Contenedor Principal -->
+  <!-- Contenedor Principal estilo ERP ICFD -->
   <main class="container">
-    <!-- ==================== SECCIÓN 1: ARCHIVOS ==================== -->
-    <section id="sectionFiles">
-      <div class="toolbar">
-        <nav class="breadcrumbs" id="breadcrumbs" aria-label="Ruta actual"></nav>
+    <div class="main-content">
+      <!-- ==================== SECCIÓN 1: ARCHIVOS ==================== -->
+      <section id="sectionFiles">
+        <div class="toolbar">
+          <nav class="breadcrumbs" id="breadcrumbs" aria-label="Ruta actual"></nav>
 
-        <div class="toolbar-actions">
-          <input type="file" id="fileInput" multiple class="hidden" />
-          <button class="btn btn-primary write-only" id="uploadBtn">
-            <span>⬆️ Subir</span>
+          <div class="toolbar-actions">
+            <input type="file" id="fileInput" multiple class="hidden" />
+            <button class="btn btn-primary write-only" id="uploadBtn">
+              <i class="fas fa-cloud-arrow-up"></i>
+              <span>Subir Archivos</span>
+            </button>
+
+            <button class="btn btn-secondary write-only" id="newFolderBtn">
+              <i class="fas fa-folder-plus"></i>
+              <span>Nueva Carpeta</span>
+            </button>
+
+            <button class="btn btn-secondary write-only" id="newTextFileBtn">
+              <i class="fas fa-file-pen"></i>
+              <span>Nuevo Documento</span>
+            </button>
+
+            <button class="btn btn-outline" id="downloadZipBtn" title="Descargar carpeta actual en ZIP">
+              <i class="fas fa-file-zipper"></i>
+              <span>ZIP</span>
+            </button>
+
+            <button class="btn btn-icon" id="viewModeBtn" title="Alternar Vista Tabla / Galería">
+              <span id="viewModeIcon">⊞</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Barra de Acciones Masivas (Selección múltiple) -->
+        <div id="bulkBar" class="bulk-bar hidden">
+          <span id="bulkCount">0 seleccionados</span>
+          <div class="bulk-actions">
+            <button class="btn btn-sm btn-outline" id="bulkZipBtn"><i class="fas fa-file-zipper"></i> Descargar ZIP</button>
+            <button class="btn btn-sm btn-outline write-only" id="bulkMoveBtn"><i class="fas fa-folder-tree"></i> Mover a...</button>
+            <button class="btn btn-sm btn-danger admin-only" id="bulkDeleteBtn"><i class="fas fa-trash-can"></i> Enviar a Papelera</button>
+            <button class="btn btn-sm btn-outline" id="bulkClearBtn">Cancelar</button>
+          </div>
+        </div>
+
+        <!-- Barra de progreso de subida -->
+        <div id="uploadProgressPanel" class="upload-panel hidden">
+          <div class="upload-panel-header">
+            <span id="uploadStatusText">Subiendo archivos...</span>
+            <span id="uploadPercentText">0%</span>
+          </div>
+          <div class="progress-track">
+            <div id="uploadProgressBar" class="progress-fill" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Vista Tabla -->
+        <div class="card file-card" id="tableViewContainer">
+          <div class="table-responsive">
+            <table class="file-table">
+              <thead>
+                <tr>
+                  <th class="col-check"><input type="checkbox" id="selectAllCheckbox" /></th>
+                  <th class="col-name">Nombre del Documento / Carpeta</th>
+                  <th class="col-size">Tamaño</th>
+                  <th class="col-date">Última Modificación</th>
+                  <th class="col-actions">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="fileTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Vista Cuadrícula (Grid View) -->
+        <div id="gridViewContainer" class="grid-container hidden"></div>
+
+        <!-- Estado vacío -->
+        <div id="emptyState" class="empty-state card hidden">
+          <i class="fas fa-folder-open" style="font-size: 2.8rem; color: var(--icfd-gold); margin-bottom: 0.75rem;"></i>
+          <h3>Esta carpeta se encuentra vacía</h3>
+          <p>Arrastre archivos aquí o utilice el botón "Subir Archivos" para agregar documentos.</p>
+        </div>
+      </section>
+
+      <!-- ==================== SECCIÓN 2: PAPELERA ==================== -->
+      <section id="sectionTrash" class="hidden">
+        <div class="toolbar">
+          <h2 class="section-heading"><i class="fas fa-trash-can"></i> Papelera de Reciclaje</h2>
+          <button class="btn btn-danger admin-only" id="emptyTrashBtn">
+            <i class="fas fa-fire"></i> Vaciar Papelera Definitivamente
           </button>
+        </div>
+        <div class="card">
+          <div class="table-responsive">
+            <table class="file-table">
+              <thead>
+                <tr>
+                  <th>Nombre Original</th>
+                  <th>Ubicación Original</th>
+                  <th>Tamaño</th>
+                  <th>Eliminado por</th>
+                  <th>Fecha</th>
+                  <th class="col-actions">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="trashTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
 
-          <button class="btn btn-secondary write-only" id="newFolderBtn">
-            <span>📁 Nueva Carpeta</span>
+      <!-- ==================== SECCIÓN 3: ENLACES COMPARTIDOS ==================== -->
+      <section id="sectionShares" class="hidden">
+        <div class="toolbar">
+          <h2 class="section-heading"><i class="fas fa-share-nodes"></i> Enlaces Públicos Activos</h2>
+        </div>
+        <div class="card">
+          <div class="table-responsive">
+            <table class="file-table">
+              <thead>
+                <tr>
+                  <th>Archivo / Carpeta</th>
+                  <th>Enlace Público</th>
+                  <th>Descargas</th>
+                  <th>Expiración</th>
+                  <th>Protección</th>
+                  <th class="col-actions">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="sharesTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== SECCIÓN 4: USUARIOS (ADMIN) ==================== -->
+      <section id="sectionUsers" class="hidden">
+        <div class="toolbar">
+          <h2 class="section-heading"><i class="fas fa-users-gear"></i> Gestión de Usuarios y Roles</h2>
+          <button class="btn btn-primary" id="newUserBtn">
+            <i class="fas fa-user-plus"></i> Crear / Editar Usuario
           </button>
+        </div>
+        <div class="card">
+          <div class="table-responsive">
+            <table class="file-table">
+              <thead>
+                <tr>
+                  <th>Usuario</th>
+                  <th>Rol Asignado</th>
+                  <th>Fecha de Alta</th>
+                  <th class="col-actions">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
 
-          <button class="btn btn-secondary write-only" id="newTextFileBtn">
-            <span>📝 Nuevo Archivo</span>
+      <!-- ==================== SECCIÓN 5: AUDITORÍA (ADMIN) ==================== -->
+      <section id="sectionAudit" class="hidden">
+        <div class="toolbar">
+          <h2 class="section-heading"><i class="fas fa-shield-halved"></i> Registro de Actividad y Auditoría</h2>
+          <button class="btn btn-outline" id="refreshAuditBtn">
+            <i class="fas fa-arrows-rotate"></i> Actualizar
           </button>
-
-          <button class="btn btn-outline" id="downloadZipBtn" title="Descargar carpeta actual en ZIP">
-            <span>📦 ZIP</span>
-          </button>
-
-          <button class="btn btn-icon" id="viewModeBtn" title="Alternar Vista Tabla / Galería">
-            <span id="viewModeIcon">⊞</span>
-          </button>
         </div>
-      </div>
-
-      <!-- Barra de Acciones Masivas (Selección múltiple) -->
-      <div id="bulkBar" class="bulk-bar hidden">
-        <span id="bulkCount">0 seleccionados</span>
-        <div class="bulk-actions">
-          <button class="btn btn-sm btn-outline" id="bulkZipBtn">📦 Descargar ZIP</button>
-          <button class="btn btn-sm btn-outline write-only" id="bulkMoveBtn">📂 Mover a...</button>
-          <button class="btn btn-sm btn-danger admin-only" id="bulkDeleteBtn">🗑️ Enviar a Papelera</button>
-          <button class="btn btn-sm btn-outline" id="bulkClearBtn">Cancelar</button>
+        <div class="card">
+          <div class="table-responsive">
+            <table class="file-table">
+              <thead>
+                <tr>
+                  <th>Fecha y Hora</th>
+                  <th>Usuario</th>
+                  <th>Dirección IP</th>
+                  <th>Operación</th>
+                  <th>Elemento</th>
+                  <th>Detalles</th>
+                </tr>
+              </thead>
+              <tbody id="auditTableBody"></tbody>
+            </table>
+          </div>
         </div>
-      </div>
-
-      <!-- Barra de progreso de subida -->
-      <div id="uploadProgressPanel" class="upload-panel hidden">
-        <div class="upload-panel-header">
-          <span id="uploadStatusText">Subiendo archivos...</span>
-          <span id="uploadPercentText">0%</span>
-        </div>
-        <div class="progress-track">
-          <div id="uploadProgressBar" class="progress-fill" style="width: 0%"></div>
-        </div>
-      </div>
-
-      <!-- Vista Tabla -->
-      <div class="card file-card" id="tableViewContainer">
-        <div class="table-responsive">
-          <table class="file-table">
-            <thead>
-              <tr>
-                <th class="col-check"><input type="checkbox" id="selectAllCheckbox" /></th>
-                <th class="col-name">Nombre</th>
-                <th class="col-size">Tamaño</th>
-                <th class="col-date">Modificado</th>
-                <th class="col-actions">Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="fileTableBody"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Vista Cuadrícula (Grid View) -->
-      <div id="gridViewContainer" class="grid-container hidden"></div>
-
-      <!-- Estado vacío -->
-      <div id="emptyState" class="empty-state card hidden">
-        <h3>Esta carpeta está vacía</h3>
-        <p>Arrastra archivos aquí o usa el botón "Subir" para comenzar.</p>
-      </div>
-    </section>
-
-    <!-- ==================== SECCIÓN 2: PAPELERA ==================== -->
-    <section id="sectionTrash" class="hidden">
-      <div class="toolbar">
-        <h2>🗑️ Papelera de Reciclaje</h2>
-        <button class="btn btn-danger admin-only" id="emptyTrashBtn">Vaciar Papelera Definitivamente</button>
-      </div>
-      <div class="card">
-        <div class="table-responsive">
-          <table class="file-table">
-            <thead>
-              <tr>
-                <th>Nombre Original</th>
-                <th>Ruta Original</th>
-                <th>Tamaño</th>
-                <th>Eliminado por</th>
-                <th>Fecha</th>
-                <th class="col-actions">Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="trashTableBody"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- ==================== SECCIÓN 3: ENLACES COMPARTIDOS ==================== -->
-    <section id="sectionShares" class="hidden">
-      <div class="toolbar">
-        <h2>🔗 Enlaces Públicos Activos</h2>
-      </div>
-      <div class="card">
-        <div class="table-responsive">
-          <table class="file-table">
-            <thead>
-              <tr>
-                <th>Archivo / Carpeta</th>
-                <th>Enlace Público</th>
-                <th>Descargas</th>
-                <th>Expira</th>
-                <th>Protegido</th>
-                <th class="col-actions">Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="sharesTableBody"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- ==================== SECCIÓN 4: USUARIOS (ADMIN) ==================== -->
-    <section id="sectionUsers" class="hidden">
-      <div class="toolbar">
-        <h2>👥 Gestión de Usuarios y Roles</h2>
-        <button class="btn btn-primary" id="newUserBtn">➕ Crear / Editar Usuario</button>
-      </div>
-      <div class="card">
-        <div class="table-responsive">
-          <table class="file-table">
-            <thead>
-              <tr>
-                <th>Usuario</th>
-                <th>Rol</th>
-                <th>Creado</th>
-                <th class="col-actions">Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="usersTableBody"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- ==================== SECCIÓN 5: AUDITORÍA (ADMIN) ==================== -->
-    <section id="sectionAudit" class="hidden">
-      <div class="toolbar">
-        <h2>🛡️ Registro de Actividad y Seguridad</h2>
-        <button class="btn btn-outline" id="refreshAuditBtn">🔄 Actualizar</button>
-      </div>
-      <div class="card">
-        <div class="table-responsive">
-          <table class="file-table">
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Usuario</th>
-                <th>IP</th>
-                <th>Acción</th>
-                <th>Objetivo</th>
-                <th>Detalles</th>
-              </tr>
-            </thead>
-            <tbody id="auditTableBody"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
+      </section>
+    </div>
   </main>
+
+  <!-- Pie de Página Institucional ICFD -->
+  <footer class="erp-footer">
+    <div class="container footer-inner">
+      <div>
+        <span class="footer-name">Corporación Iglesia Cristiana Internacional Familia de Dios</span>
+        <span style="margin-left: 0.75rem;">· Repositorio Institucional de Archivos</span>
+      </div>
+      <div>
+        <span>Archivos ICFD v2.0 · 2026</span>
+      </div>
+    </div>
+  </footer>
 
   <!-- Modal Prompt Genérico -->
   <div id="promptModal" class="modal-backdrop hidden">
@@ -277,7 +310,7 @@
   <div id="shareModal" class="modal-backdrop hidden">
     <div class="modal">
       <div class="modal-header">
-        <h3>🔗 Compartir Enlace Público</h3>
+        <h3><i class="fas fa-share-nodes"></i> Compartir Enlace Público</h3>
         <button class="btn-close" id="shareCloseBtn">&times;</button>
       </div>
       <form id="shareForm">
@@ -312,7 +345,7 @@
   <div id="editorModal" class="modal-backdrop hidden">
     <div class="modal modal-lg">
       <div class="modal-header">
-        <h3 id="editorTitle">📝 Editor de Archivo</h3>
+        <h3 id="editorTitle">Editor de Documento</h3>
         <button class="btn-close" id="editorCloseBtn">&times;</button>
       </div>
       <div class="modal-body">
@@ -320,7 +353,7 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-outline" id="editorCancelBtn">Cancelar</button>
-        <button type="button" class="btn btn-primary" id="editorSaveBtn">💾 Guardar Cambios</button>
+        <button type="button" class="btn btn-primary" id="editorSaveBtn"><i class="fas fa-floppy-disk"></i> Guardar Cambios</button>
       </div>
     </div>
   </div>
@@ -329,7 +362,7 @@
   <div id="userModal" class="modal-backdrop hidden">
     <div class="modal">
       <div class="modal-header">
-        <h3>👥 Crear / Actualizar Usuario</h3>
+        <h3><i class="fas fa-user-shield"></i> Crear / Actualizar Usuario</h3>
         <button class="btn-close" id="userCloseBtn">&times;</button>
       </div>
       <form id="userForm">
@@ -359,7 +392,7 @@
     </div>
   </div>
 
-  <!-- Modal Vista Previa (Imagen, Video, Audio, PDF, Texto) -->
+  <!-- Modal Vista Previa -->
   <div id="previewModal" class="modal-backdrop hidden">
     <div class="modal modal-lg">
       <div class="modal-header">
@@ -368,8 +401,8 @@
       </div>
       <div class="modal-body preview-container" id="previewContent"></div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary write-only hidden" id="previewEditBtn">📝 Editar Texto</button>
-        <a id="previewDownloadBtn" href="#" class="btn btn-primary" download>⬇️ Descargar</a>
+        <button type="button" class="btn btn-secondary write-only hidden" id="previewEditBtn"><i class="fas fa-pen-to-square"></i> Editar Texto</button>
+        <a id="previewDownloadBtn" href="#" class="btn btn-primary" download><i class="fas fa-download"></i> Descargar</a>
       </div>
     </div>
   </div>

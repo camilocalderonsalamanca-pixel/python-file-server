@@ -1070,11 +1070,18 @@ class FileServerHandler(BaseHTTPRequestHandler):
         if share["password_hash"]:
             provided_pw = query.get("password", [""])[0]
             if not provided_pw or not verify_password(provided_pw, share["password_hash"]):
-                html = f"""<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Enlace Protegido</title>
+                html = f"""<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Enlace Protegido · Archivos ICFD</title>
+                <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
                 <link rel="stylesheet" href="/static/styles.css"></head><body class="login-body">
-                <div class="login-card"><div class="login-header"><h1>🔒 Enlace Protegido</h1><p>Ingresa la contraseña para descargar <b>{os.path.basename(share['path'])}</b></p></div>
-                <form method="GET" action="/s/{token}"><div class="form-group"><input type="password" name="password" placeholder="Contraseña" required autofocus></div>
-                <button class="btn btn-primary btn-block" type="submit">Descargar</button></form></div></body></html>"""
+                <div class="login-wrapper" style="max-width:480px;"><div class="login-card-split" style="min-height:auto; flex-direction:column;">
+                <div class="hero-panel" style="padding:28px;"><div class="hero-seal" style="width:86px;height:86px;margin-bottom:1rem;"><img src="/static/img/logo.png" alt="Logo ICFD"></div>
+                <div class="hero-eyebrow">Enlace Protegido</div><h1 class="hero-title" style="font-size:1.5rem;">{os.path.basename(share['path'])}</h1></div>
+                <div class="form-panel" style="padding:28px;"><form method="GET" action="/s/{token}">
+                <div class="form-group"><label class="form-label">Contraseña de descarga</label>
+                <div class="input-group-custom"><i class="fas fa-lock input-icon"></i><input type="password" name="password" class="form-control-icfd" placeholder="Ingrese contraseña" required autofocus></div></div>
+                <button class="btn-login" type="submit">Descargar Archivo</button></form></div></div></div></body></html>"""
                 body = html.encode("utf-8")
                 self.send_response(HTTPStatus.OK)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
