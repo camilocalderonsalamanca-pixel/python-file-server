@@ -652,10 +652,45 @@ class DatabaseManager:
             )
             conn.commit()
 
-    def list_trash(self) -> list:
+    def list_trash(self, retention_days: int = 30) -> list:
+        now = int(time.time())
+        retention_sec = retention_days * 86400
         with self.lock, self._connect() as conn:
             rows = conn.execute("SELECT * FROM trash ORDER BY deleted_at DESC").fetchall()
-            return [dict(r) for r in rows]
+            items = []
+            for r in rows:
+                d = dict(r)
+                expires_at = d["deleted_at"] + retention_sec
+                rem_sec = max(0, expires_at - now)
+                d["expires_at"] = expires_at
+                d["days_remaining"] = max(1, int((rem_sec + 86399) // 86400)) if rem_sec > 0 else 0
+                items.append(d)
+            return items
+
+    def purge_expired_trash(self, trash_dir: Path, retention_days: int = 30) -> int:
+        cutoff = int(time.time()) - (retention_days * 86400)
+        purged = 0
+        with self.lock, self._connect() as conn:
+            expired_rows = conn.execute("SELECT * FROM trash WHERE deleted_at <= ?", (cutoff,)).fetchall()
+            for r in expired_rows:
+                item_id = r["id"]
+                trash_file = trash_dir / item_id
+                try:
+                    if trash_file.is_dir():
+                        shutil.rmtree(trash_file)
+                    elif trash_file.exists():
+                        trash_file.unlink()
+                except Exception:
+                    pass
+                conn.execute("DELETE FROM trash WHERE id = ?", (item_id,))
+                conn.execute(
+                    "INSERT INTO audit_logs (timestamp, username, ip, action, target, details) VALUES (?, 'sistema', '127.0.0.1', 'TRASH_AUTO_PURGE', ?, ?)",
+                    (int(time.time()), r["orig_path"], f"Eliminado definitivamente tras {retention_days} días en papelera"),
+                )
+                purged += 1
+            if purged > 0:
+                conn.commit()
+        return purged
 
     def get_trash_item(self, item_id: str) -> dict:
         with self.lock, self._connect() as conn:
@@ -740,6 +775,20 @@ class ServerConfig:
             db_path = Path(__file__).parent / "fileserver.db"
         self.db = DatabaseManager(db_path, username, password)
         self.rate_limiter = RateLimiter()
+        self.trash_retention_days = int(os.environ.get("TRASH_RETENTION_DAYS", "30"))
+        self._start_trash_cleanup_worker()
+
+    def _start_trash_cleanup_worker(self):
+        def _worker():
+            while True:
+                try:
+                    self.db.purge_expired_trash(self.trash_dir, self.trash_retention_days)
+                except Exception:
+                    pass
+                time.sleep(3600)
+
+        t = threading.Thread(target=_worker, daemon=True)
+        t.start()
 
     def create_session_token(self, username: str) -> str:
         timestamp = str(int(time.time()))
@@ -981,7 +1030,11 @@ class FileServerHandler(BaseHTTPRequestHandler):
         elif route == "/api/stats":
             self.handle_stats(user)
         elif route == "/api/trash":
-            self.send_json({"items": self.config.db.list_trash()})
+            self.config.db.purge_expired_trash(self.config.trash_dir, self.config.trash_retention_days)
+            self.send_json({
+                "items": self.config.db.list_trash(self.config.trash_retention_days),
+                "retention_days": self.config.trash_retention_days,
+            })
         elif route == "/api/shares":
             if self.require_role(user, ("admin", "editor")):
                 self.send_json({"items": self.config.db.list_shares()})
@@ -1055,6 +1108,9 @@ class FileServerHandler(BaseHTTPRequestHandler):
         elif route == "/api/trash/restore":
             if self.require_role(user, ("admin", "editor")):
                 self.handle_trash_restore(user)
+        elif route == "/api/trash/delete":
+            if self.require_role(user, ("admin",)):
+                self.handle_trash_delete(user)
         elif route == "/api/trash/empty":
             if self.require_role(user, ("admin",)):
                 self.handle_trash_empty(user)
@@ -1860,6 +1916,25 @@ class FileServerHandler(BaseHTTPRequestHandler):
             self.send_json({"ok": True})
         except Exception as e:
             self.send_json({"error": f"No se pudo restaurar: {e}"}, status=HTTPStatus.INTERNAL_SERVER_ERROR)
+
+    def handle_trash_delete(self, user: dict):
+        try:
+            body = self.read_json_body()
+            item_id = body.get("id", "")
+            item = self.config.db.get_trash_item(item_id)
+            if not item:
+                self.send_json({"error": "Elemento no encontrado en la papelera."}, status=HTTPStatus.NOT_FOUND)
+                return
+            trash_file = self.config.trash_dir / item_id
+            if trash_file.is_dir():
+                shutil.rmtree(trash_file)
+            elif trash_file.exists():
+                trash_file.unlink()
+            self.config.db.remove_trash_item(item_id)
+            self.config.db.log_audit(user["username"], self.get_client_ip(), "TRASH_DELETE_PERM", item["orig_path"])
+            self.send_json({"ok": True})
+        except Exception as e:
+            self.send_json({"error": f"No se pudo eliminar definitivamente: {e}"}, status=HTTPStatus.INTERNAL_SERVER_ERROR)
 
     def handle_trash_empty(self, user: dict):
         try:

@@ -242,7 +242,12 @@
       <!-- ==================== SECCIÓN 3: PAPELERA ==================== -->
       <section id="sectionTrash" class="hidden">
         <div class="toolbar">
-          <h2 class="section-heading"><i class="fas fa-trash-can"></i> Papelera de Reciclaje</h2>
+          <div>
+            <h2 class="section-heading"><i class="fas fa-trash-can"></i> Papelera de Reciclaje</h2>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">
+              <i class="fas fa-clock" style="color: var(--icfd-gold);"></i> Los archivos en la papelera se eliminan automáticamente para siempre a los <b>30 días</b>.
+            </p>
+          </div>
           <button class="btn btn-danger admin-only" id="emptyTrashBtn">
             <i class="fas fa-fire"></i> Vaciar Papelera Definitivamente
           </button>
@@ -257,6 +262,7 @@
                   <th>Tamaño</th>
                   <th>Eliminado por</th>
                   <th>Fecha</th>
+                  <th>Eliminación Automática</th>
                   <th class="col-actions">Acciones</th>
                 </tr>
               </thead>

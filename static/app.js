@@ -1424,17 +1424,26 @@ async function loadTrash() {
   const data = await res.json();
   const tbody = document.getElementById("trashTableBody");
   tbody.innerHTML = "";
+  const isAdmin = state.user.role === "admin";
+
   (data.items || []).forEach((t) => {
     const tr = document.createElement("tr");
+    const daysRem = t.days_remaining !== undefined ? t.days_remaining : 30;
     tr.innerHTML = `
       <td>${t.is_dir ? "📁" : "📄"} <b>${t.name}</b></td>
       <td>${t.orig_path}</td>
       <td>${formatBytes(t.size)}</td>
       <td>${t.deleted_by}</td>
       <td>${formatDate(t.deleted_at)}</td>
-      <td class="col-actions"><button class="btn btn-sm btn-primary">♻️ Restaurar</button></td>
+      <td><span class="meta-badge badge-note">⏳ En ${daysRem} día${daysRem === 1 ? "" : "s"}</span></td>
+      <td class="col-actions">
+        <div class="action-group">
+          <button class="btn btn-sm btn-primary rest-btn">♻️ Restaurar</button>
+          ${isAdmin ? `<button class="action-btn danger perm-del-btn" title="Eliminar para siempre ahora">🗑️</button>` : ""}
+        </div>
+      </td>
     `;
-    tr.querySelector("button").addEventListener("click", async () => {
+    tr.querySelector(".rest-btn").addEventListener("click", async () => {
       const r = await fetch("/api/trash/restore", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1447,6 +1456,21 @@ async function loadTrash() {
         showToast("No se pudo restaurar", "error");
       }
     });
+    const permDelBtn = tr.querySelector(".perm-del-btn");
+    if (permDelBtn) {
+      permDelBtn.addEventListener("click", async () => {
+        if (!confirm(`¿Eliminar "${t.name}" para siempre? Esta acción no se puede deshacer.`)) return;
+        const r = await fetch("/api/trash/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: t.id }),
+        });
+        if (r.ok) {
+          showToast("Eliminado definitivamente", "info");
+          loadTrash();
+        }
+      });
+    }
     tbody.appendChild(tr);
   });
 }
